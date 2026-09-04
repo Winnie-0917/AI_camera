@@ -64,6 +64,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import android.hardware.camera2.CameraCharacteristics
 import com.example.ai_camera.R
 import com.example.ai_camera.ai.AiAssistantSheet
+import com.example.ai_camera.ai.StyleSuggestion
 import com.example.ai_camera.settings.SettingsSheet
 import com.example.ai_camera.camera.AspectRatioOption
 import com.example.ai_camera.camera.FocusMode
@@ -245,6 +246,22 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         if (showAssistant) {
             AiAssistantSheet(
                 cameraContext = cameraContextOf(state),
+                specs = state.specs,
+                onApply = { suggestion ->
+                    val specs = state.specs
+                    if (specs == null) {
+                        StyleSuggestion.Applied(state.settings, emptyList(), emptyList())
+                    } else {
+                        // Applied to the live settings inside the transform and clamped to this
+                        // camera's real ranges; the result reports what the hardware could not do.
+                        lateinit var result: StyleSuggestion.Applied
+                        viewModel.updateSettings { current ->
+                            result = suggestion.applyTo(current, specs)
+                            result.settings
+                        }
+                        result
+                    }
+                },
                 onDismiss = { showAssistant = false },
             )
         }

@@ -98,6 +98,22 @@ white balance, focus, zoom, flash, and what the lens is capable of — so you ca
 
 It replies in whatever language you ask in.
 
+### One-tap styles
+
+Ask for a *look* rather than a fact — "make it moody and cinematic", 「我想要暖色調」, "make this
+look better" — and the reply comes with a **suggestion card** listing concrete parameters and an
+**Apply** button that sets them on the camera.
+
+The parameters arrive as structured JSON (Gemini `responseSchema`), not parsed out of prose, so
+Apply never depends on the model's formatting. Before anything reaches the camera it is checked
+against that lens's real capabilities and clamped to its ranges — asking for manual white balance
+on a camera without `MANUAL_POST_PROCESSING` drops that one field and says so, rather than sending
+an unsupported request.
+
+`thinkingBudget` is set to 0 for `flash` models: 2.5 models think before answering by default,
+which together with JSON mode pushed responses past a 60s timeout. Pro models require a budget of
+at least 128, so they are left alone.
+
 ## Project layout
 
 ```

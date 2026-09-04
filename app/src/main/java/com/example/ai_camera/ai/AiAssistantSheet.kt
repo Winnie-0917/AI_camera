@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.ai_camera.R
+import com.example.ai_camera.camera.CameraSpecs
 import kotlinx.coroutines.launch
 
 private val Accent = Color(0xFFFFD60A)
@@ -57,11 +60,17 @@ private val Panel = Color(0xFF1C1C1E)
  * @param cameraContext a short description of the current camera state, sent with every prompt.
  */
 @Composable
-fun AiAssistantSheet(cameraContext: String, onDismiss: () -> Unit) {
+fun AiAssistantSheet(
+    cameraContext: String,
+    specs: CameraSpecs?,
+    onApply: (StyleSuggestion) -> StyleSuggestion.Applied,
+    onDismiss: () -> Unit,
+) {
     val messages = remember { mutableStateListOf<ChatMessage>() }
     var input by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var appliedNotice by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val missingKeyMessage = stringResource(R.string.ai_no_key)
@@ -73,11 +82,11 @@ fun AiAssistantSheet(cameraContext: String, onDismiss: () -> Unit) {
         messages += ChatMessage(fromUser = true, text = prompt)
         input = ""
         error = null
+        appliedNotice = null
         loading = true
         scope.launch {
             try {
-                val reply = GeminiClient.send(prompt, history, cameraContext)
-                messages += ChatMessage(fromUser = false, text = reply)
+                messages += GeminiClient.send(prompt, history, cameraContext)
             } catch (e: Exception) {
                 error = if (e is GeminiException && e.message == "MISSING_KEY") {
                     missingKeyMessage
@@ -146,7 +155,22 @@ fun AiAssistantSheet(cameraContext: String, onDismiss: () -> Unit) {
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(messages) { message -> MessageBubble(message) }
+                        items(messages) { message ->
+                            Column {
+                                MessageBubble(message)
+                                message.suggestion?.let { suggestion ->
+                                    Spacer(Modifier.height(6.dp))
+                                    SuggestionCard(
+                                        suggestion = suggestion,
+                                        enabled = specs != null,
+                                        onApply = {
+                                            val result = onApply(suggestion)
+                                            appliedNotice = buildNotice(result)
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -156,6 +180,16 @@ fun AiAssistantSheet(cameraContext: String, onDismiss: () -> Unit) {
                     text = text,
                     color = Color(0xFFFF6B6B),
                     fontSize = 12.sp,
+                    modifier = Modifier.padding(vertical = 6.dp),
+                )
+            }
+
+            appliedNotice?.let { text ->
+                Text(
+                    text = text,
+                    color = Accent,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
                     modifier = Modifier.padding(vertical = 6.dp),
                 )
             }
@@ -205,6 +239,75 @@ fun AiAssistantSheet(cameraContext: String, onDismiss: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** The proposed settings, with a one-tap Apply. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SuggestionCard(
+    suggestion: StyleSuggestion,
+    enabled: Boolean,
+    onApply: () -> Unit,
+) {
+    var applied by remember(suggestion) { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Accent.copy(alpha = 0.12f))
+            .padding(12.dp),
+    ) {
+        Text(
+            text = suggestion.label,
+            color = Accent,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(8.dp))
+
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            suggestion.describe().forEach { item ->
+                Text(
+                    text = item,
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    modifier = Modifier
+                        .padding(bottom = 6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.White.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(if (applied) R.string.ai_applied else R.string.ai_apply),
+            color = if (applied) Color.White.copy(alpha = 0.5f) else Color.Black,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .align(Alignment.End)
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (applied) Color.White.copy(alpha = 0.1f) else Accent)
+                .clickable(enabled = enabled && !applied) {
+                    onApply()
+                    applied = true
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+private fun buildNotice(result: StyleSuggestion.Applied): String {
+    val applied = result.applied.joinToString(" · ")
+    val unsupported = "this camera does not support: ${result.skipped.joinToString(", ")}"
+    return when {
+        result.skipped.isEmpty() -> applied
+        result.applied.isEmpty() -> unsupported.replaceFirstChar { it.uppercase() }
+        else -> "$applied — $unsupported"
     }
 }
 

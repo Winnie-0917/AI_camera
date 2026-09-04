@@ -62,6 +62,9 @@
     <string name="ai_empty">撮影に関する質問をどうぞ。アシスタントは現在のカメラ設定を把握しています。</string>
     <string name="ai_no_key">API キーが未設定です。プロジェクト直下の .env に GEMINI_API_KEY を追加して再ビルドしてください。README.md を参照。</string>
 
+    <string name="ai_apply">適用</string>
+    <string name="ai_applied">適用済み</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">言語</string>
