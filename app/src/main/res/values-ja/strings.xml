@@ -10,6 +10,7 @@
     <string name="action_open_last_photo">最後の写真を開く</string>
     <string name="action_switch_camera">カメラを切り替え</string>
     <string name="action_capture">撮影</string>
+    <string name="action_ai">AI アシスタント</string>
 
     <!-- Exposure mode shown in the readout -->
     <string name="mode_manual">M</string>
@@ -53,6 +54,13 @@
     <string name="wb_shade">日陰</string>
     <string name="wb_twilight">夕暮れ</string>
     <string name="wb_kelvin">ケルビン</string>
+
+    <!-- AI assistant -->
+    <string name="ai_title">AI アシスタント</string>
+    <string name="ai_hint">撮影について質問…</string>
+    <string name="ai_send">送信</string>
+    <string name="ai_empty">撮影に関する質問をどうぞ。アシスタントは現在のカメラ設定を把握しています。</string>
+    <string name="ai_no_key">API キーが未設定です。プロジェクト直下の .env に GEMINI_API_KEY を追加して再ビルドしてください。README.md を参照。</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>

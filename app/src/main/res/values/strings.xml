@@ -12,6 +12,7 @@
     <string name="action_open_last_photo">Open last photo</string>
     <string name="action_switch_camera">Switch camera</string>
     <string name="action_capture">Take photo</string>
+    <string name="action_ai">AI assistant</string>
 
     <!-- Exposure mode shown in the readout -->
     <string name="mode_manual">M</string>
@@ -55,6 +56,13 @@
     <string name="wb_shade">Shade</string>
     <string name="wb_twilight">Twilight</string>
     <string name="wb_kelvin">Kelvin</string>
+
+    <!-- AI assistant -->
+    <string name="ai_title">AI Assistant</string>
+    <string name="ai_hint">Ask about your shot…</string>
+    <string name="ai_send">Send</string>
+    <string name="ai_empty">Ask anything about photography — the assistant can see your current camera settings.</string>
+    <string name="ai_no_key">No API key configured. Add GEMINI_API_KEY to the .env file in the project root, then rebuild. See README.md.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

@@ -1,8 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Secrets come from a git-ignored `.env` in the project root (see .env.example).
+// Missing file or key is not an error: the app builds and tells the user to configure it.
+val env = Properties().apply {
+    val envFile = rootProject.file(".env")
+    if (envFile.exists()) envFile.inputStream().use { load(it) }
+}
+fun envOrEmpty(key: String, default: String = "") =
+    (env.getProperty(key) ?: System.getenv(key) ?: default).trim()
 
 android {
     namespace = "com.example.ai_camera"
@@ -16,6 +27,13 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GEMINI_API_KEY", "\"${envOrEmpty("GEMINI_API_KEY")}\"")
+        buildConfigField(
+            "String",
+            "GEMINI_MODEL",
+            "\"${envOrEmpty("GEMINI_MODEL", "gemini-2.5-flash")}\"",
+        )
     }
 
     buildTypes {
@@ -36,6 +54,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

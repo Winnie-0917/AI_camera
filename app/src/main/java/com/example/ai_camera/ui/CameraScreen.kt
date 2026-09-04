@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Straighten
@@ -60,9 +61,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import android.hardware.camera2.CameraCharacteristics
 import com.example.ai_camera.R
+import com.example.ai_camera.ai.AiAssistantSheet
 import com.example.ai_camera.settings.SettingsSheet
 import com.example.ai_camera.camera.AspectRatioOption
+import com.example.ai_camera.camera.FocusMode
+import com.example.ai_camera.camera.WbPreset
 import com.example.ai_camera.camera.CaptureSettings
 import com.example.ai_camera.camera.ExposureMode
 import com.example.ai_camera.camera.FlashMode
@@ -101,6 +106,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
     var previewSizePx by remember { mutableStateOf(0 to 0) }
     var showSettings by remember { mutableStateOf(false) }
+    var showAssistant by remember { mutableStateOf(false) }
 
     LaunchedEffect(focusRingPosition) {
         if (focusRingPosition != null) {
@@ -171,6 +177,13 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             )
 
+            AiAssistantButton(
+                onClick = { showAssistant = true },
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+
             if (state.settings.histogramEnabled) {
                 HistogramOverlay(
                     bins = state.histogram,
@@ -227,6 +240,13 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 
         if (showSettings) {
             SettingsSheet(onDismiss = { showSettings = false })
+        }
+
+        if (showAssistant) {
+            AiAssistantSheet(
+                cameraContext = cameraContextOf(state),
+                onDismiss = { showAssistant = false },
+            )
         }
 
         state.errorMessage?.let { message ->
@@ -353,6 +373,81 @@ private fun TopBar(
                 label = "RAW",
                 active = settings.saveRaw,
                 onClick = { onChange { it.copy(saveRaw = !it.saveRaw) } },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AiAssistantButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .background(Accent.copy(alpha = 0.9f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.AutoAwesome,
+            contentDescription = stringResource(R.string.action_ai),
+            tint = Color.Black,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+/**
+ * Snapshot of the current camera state, sent to the assistant so its advice can reference the
+ * settings actually in effect rather than generic guidance.
+ */
+private fun cameraContextOf(state: CameraUiState): String {
+    val s = state.settings
+    val specs = state.specs
+    val manual = s.exposureMode == ExposureMode.MANUAL
+    val iso = if (manual) s.iso else state.liveReadout.iso
+    val shutter = if (manual) s.shutterSpeedNanos else state.liveReadout.exposureNanos
+
+    return buildString {
+        appendLine("- Exposure mode: ${if (manual) "manual" else "auto"}")
+        appendLine("- ISO: ${iso ?: "unknown"}")
+        appendLine("- Shutter speed: ${shutter?.let { formatShutter(it) } ?: "unknown"}")
+        specs?.let {
+            appendLine(
+                "- Exposure compensation: ${formatEv(s.evCompensationSteps, it.aeCompensationStep)} EV"
+            )
+        }
+        appendLine(
+            "- White balance: " + if (s.wbPreset == WbPreset.KELVIN) {
+                formatKelvin(s.wbKelvin)
+            } else {
+                s.wbPreset.name.lowercase()
+            }
+        )
+        appendLine(
+            "- Focus: " + if (s.focusMode == FocusMode.MANUAL) {
+                "manual at ${formatFocus(s.focusDistanceDiopters)}"
+            } else {
+                "autofocus"
+            }
+        )
+        appendLine("- Zoom: ${formatZoom(s.zoomRatio)}")
+        appendLine("- Flash: ${s.flashMode.name.lowercase()}")
+        appendLine("- Aspect ratio: ${s.aspectRatio.name.removePrefix("R").replace('_', ':')}")
+        appendLine("- RAW capture: ${if (s.saveRaw) "on" else "off"}")
+        appendLine("- Self timer: ${s.timer.seconds}s")
+        appendLine(
+            "- Lens: " + if (s.lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+                "front"
+            } else {
+                "back"
+            }
+        )
+        specs?.let {
+            appendLine(
+                "- This camera supports: manual exposure=${it.supportsManualExposure}, " +
+                    "manual focus=${it.supportsManualFocus}, RAW=${it.supportsRaw}, " +
+                    "ISO range=${it.isoRange}, max zoom=${it.maxDigitalZoom}x"
             )
         }
     }
