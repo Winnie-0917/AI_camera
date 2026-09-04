@@ -33,11 +33,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +51,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.ai_camera.R
 import com.example.ai_camera.camera.CameraSpecs
+import com.example.ai_camera.camera.CaptureSettings
 import kotlinx.coroutines.launch
 
 private val Accent = Color(0xFFFFD60A)
@@ -63,10 +64,13 @@ private val Panel = Color(0xFF1C1C1E)
 fun AiAssistantSheet(
     cameraContext: String,
     specs: CameraSpecs?,
+    /** Hoisted so the conversation and the undo affordance survive closing the window. */
+    messages: SnapshotStateList<ChatMessage>,
+    appliedSuggestion: StyleSuggestion?,
     onApply: (StyleSuggestion) -> StyleSuggestion.Applied,
+    onRevert: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val messages = remember { mutableStateListOf<ChatMessage>() }
     var input by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -74,6 +78,7 @@ fun AiAssistantSheet(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val missingKeyMessage = stringResource(R.string.ai_no_key)
+    val revertedMessage = stringResource(R.string.ai_reverted)
 
     fun send() {
         val prompt = input.trim()
@@ -163,9 +168,13 @@ fun AiAssistantSheet(
                                     SuggestionCard(
                                         suggestion = suggestion,
                                         enabled = specs != null,
+                                        isApplied = suggestion == appliedSuggestion,
                                         onApply = {
-                                            val result = onApply(suggestion)
-                                            appliedNotice = buildNotice(result)
+                                            appliedNotice = buildNotice(onApply(suggestion))
+                                        },
+                                        onRevert = {
+                                            onRevert()
+                                            appliedNotice = revertedMessage
                                         },
                                     )
                                 }
@@ -248,9 +257,10 @@ fun AiAssistantSheet(
 private fun SuggestionCard(
     suggestion: StyleSuggestion,
     enabled: Boolean,
+    isApplied: Boolean,
     onApply: () -> Unit,
+    onRevert: () -> Unit,
 ) {
-    var applied by remember(suggestion) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -284,18 +294,15 @@ private fun SuggestionCard(
 
         Spacer(Modifier.height(4.dp))
         Text(
-            text = stringResource(if (applied) R.string.ai_applied else R.string.ai_apply),
-            color = if (applied) Color.White.copy(alpha = 0.5f) else Color.Black,
+            text = stringResource(if (isApplied) R.string.ai_revert else R.string.ai_apply),
+            color = if (isApplied) Accent else Color.Black,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .align(Alignment.End)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (applied) Color.White.copy(alpha = 0.1f) else Accent)
-                .clickable(enabled = enabled && !applied) {
-                    onApply()
-                    applied = true
-                }
+                .background(if (isApplied) Color.White.copy(alpha = 0.12f) else Accent)
+                .clickable(enabled = enabled) { if (isApplied) onRevert() else onApply() }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }

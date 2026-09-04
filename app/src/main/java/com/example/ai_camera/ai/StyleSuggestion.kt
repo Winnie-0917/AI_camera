@@ -35,6 +35,8 @@ data class StyleSuggestion(
     /** Result of applying: the new settings plus what was actually changed or dropped. */
     data class Applied(
         val settings: CaptureSettings,
+        /** Settings as they were immediately before applying, so the change can be undone. */
+        val previous: CaptureSettings,
         val applied: List<String>,
         val skipped: List<String>,
     )
@@ -184,7 +186,7 @@ data class StyleSuggestion(
             }
         }
 
-        return Applied(next, applied, skipped)
+        return Applied(next, current, applied, skipped)
     }
 
     /** Human-readable summary of the proposal, for the suggestion card. */

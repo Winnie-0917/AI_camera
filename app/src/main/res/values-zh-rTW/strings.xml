@@ -64,6 +64,8 @@
 
     <string name="ai_apply">套用</string>
     <string name="ai_applied">已套用</string>
+    <string name="ai_revert">復原</string>
+    <string name="ai_reverted">已還原成套用前的參數。</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>

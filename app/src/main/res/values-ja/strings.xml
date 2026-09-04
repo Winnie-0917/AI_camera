@@ -64,6 +64,8 @@
 
     <string name="ai_apply">適用</string>
     <string name="ai_applied">適用済み</string>
+    <string name="ai_revert">元に戻す</string>
+    <string name="ai_reverted">適用前の設定に戻しました。</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>

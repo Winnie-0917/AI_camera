@@ -41,6 +41,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -64,6 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import android.hardware.camera2.CameraCharacteristics
 import com.example.ai_camera.R
 import com.example.ai_camera.ai.AiAssistantSheet
+import com.example.ai_camera.ai.ChatMessage
 import com.example.ai_camera.ai.StyleSuggestion
 import com.example.ai_camera.settings.SettingsSheet
 import com.example.ai_camera.camera.AspectRatioOption
@@ -108,6 +110,11 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     var previewSizePx by remember { mutableStateOf(0 to 0) }
     var showSettings by remember { mutableStateOf(false) }
     var showAssistant by remember { mutableStateOf(false) }
+    // Owned here, not inside the dialog, so the conversation and the one-tap undo survive
+    // closing the assistant to look at the viewfinder.
+    val assistantMessages = remember { mutableStateListOf<ChatMessage>() }
+    var appliedSuggestion by remember { mutableStateOf<StyleSuggestion?>(null) }
+    var settingsBeforeSuggestion by remember { mutableStateOf<CaptureSettings?>(null) }
 
     LaunchedEffect(focusRingPosition) {
         if (focusRingPosition != null) {
@@ -247,10 +254,24 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             AiAssistantSheet(
                 cameraContext = cameraContextOf(state),
                 specs = state.specs,
+                messages = assistantMessages,
+                appliedSuggestion = appliedSuggestion,
+                onRevert = {
+                    settingsBeforeSuggestion?.let { previous ->
+                        viewModel.updateSettings { previous }
+                    }
+                    appliedSuggestion = null
+                    settingsBeforeSuggestion = null
+                },
                 onApply = { suggestion ->
                     val specs = state.specs
                     if (specs == null) {
-                        StyleSuggestion.Applied(state.settings, emptyList(), emptyList())
+                        StyleSuggestion.Applied(
+                            state.settings,
+                            state.settings,
+                            emptyList(),
+                            emptyList(),
+                        )
                     } else {
                         // Applied to the live settings inside the transform and clamped to this
                         // camera's real ranges; the result reports what the hardware could not do.
@@ -258,6 +279,11 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                         viewModel.updateSettings { current ->
                             result = suggestion.applyTo(current, specs)
                             result.settings
+                        }
+                        // Only offer undo when something actually changed.
+                        if (result.applied.isNotEmpty()) {
+                            appliedSuggestion = suggestion
+                            settingsBeforeSuggestion = result.previous
                         }
                         result
                     }

@@ -66,6 +66,8 @@
 
     <string name="ai_apply">Apply</string>
     <string name="ai_applied">Applied</string>
+    <string name="ai_revert">Undo</string>
+    <string name="ai_reverted">Reverted to the previous settings.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
