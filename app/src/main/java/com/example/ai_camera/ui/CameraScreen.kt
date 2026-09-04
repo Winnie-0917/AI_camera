@@ -1,0 +1,524 @@
+package com.example.ai_camera.ui
+
+import android.content.Intent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.FlashAuto
+import androidx.compose.material.icons.filled.FlashOff
+import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ai_camera.R
+import com.example.ai_camera.settings.SettingsSheet
+import com.example.ai_camera.camera.AspectRatioOption
+import com.example.ai_camera.camera.CaptureSettings
+import com.example.ai_camera.camera.ExposureMode
+import com.example.ai_camera.camera.FlashMode
+import com.example.ai_camera.camera.TimerOption
+import kotlinx.coroutines.delay
+
+private val Accent = Color(0xFFFFD60A)
+
+@Composable
+fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.resume()
+                Lifecycle.Event.ON_STOP -> viewModel.pause()
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val specs = state.specs
+    val contentAspect = remember(specs) {
+        specs?.chooseOptimalPreviewSize()?.let { size ->
+            // Camera preview buffers arrive sensor-oriented; in a portrait-locked activity the
+            // displayed frame is the buffer rotated 90 degrees, so width/height swap.
+            size.height.toFloat() / size.width.toFloat()
+        }
+    }
+
+    var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
+    var previewSizePx by remember { mutableStateOf(0 to 0) }
+    var showSettings by remember { mutableStateOf(false) }
+
+    LaunchedEffect(focusRingPosition) {
+        if (focusRingPosition != null) {
+            delay(1200)
+            focusRingPosition = null
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        CameraPreview(
+            contentAspect = contentAspect,
+            onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
+            onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
+            onTapFocus = { nx, ny ->
+                viewModel.tapToFocus(nx, ny)
+                val (w, h) = previewSizePx
+                if (w > 0 && h > 0 && contentAspect != null) {
+                    focusRingPosition = frameOffsetToView(nx, ny, contentAspect, w, h)
+                }
+            },
+            onZoomDelta = { zoom ->
+                val max = specs?.maxDigitalZoom ?: 1f
+                viewModel.updateSettings { s ->
+                    s.copy(zoomRatio = (s.zoomRatio * zoom).coerceIn(1f, max))
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { previewSizePx = it.width to it.height },
+        )
+
+        // Overlays are constrained to the letterboxed frame so the grid matches the real image.
+        if (contentAspect != null) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val viewAspect = maxWidth / maxHeight
+                val frameModifier = if (contentAspect > viewAspect) {
+                    Modifier.fillMaxWidth()
+                } else {
+                    Modifier.fillMaxHeight()
+                }
+                Box(
+                    modifier = frameModifier
+                        .aspectRatio(contentAspect)
+                        .align(Alignment.Center)
+                ) {
+                    if (state.settings.gridEnabled) GridOverlay()
+                    if (state.settings.levelEnabled) LevelOverlay(rollDegrees = rememberDeviceRoll())
+                }
+            }
+        }
+
+        focusRingPosition?.let { FocusRing(position = it) }
+
+        if (state.isCapturing) ShutterFlashOverlay(visible = true)
+
+        Column(modifier = Modifier.fillMaxSize()) {
+            TopBar(
+                state = state,
+                onChange = viewModel::updateSettings,
+                onOpenSettings = { showSettings = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+
+            if (state.settings.histogramEnabled) {
+                HistogramOverlay(
+                    bins = state.histogram,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
+
+            if (state.timerCountdown > 0) {
+                Text(
+                    text = "${state.timerCountdown}",
+                    color = Color.White,
+                    fontSize = 72.sp,
+                    fontWeight = FontWeight.Light,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+                Spacer(Modifier.weight(1f))
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.35f))
+                    .navigationBarsPadding()
+                    .padding(vertical = 12.dp),
+            ) {
+                ReadoutHud(state = state, modifier = Modifier.padding(horizontal = 16.dp))
+                Spacer(Modifier.height(10.dp))
+                ProControls(state = state, onChange = viewModel::updateSettings)
+                Spacer(Modifier.height(14.dp))
+                ShutterRow(
+                    isCapturing = state.isCapturing,
+                    onCapture = viewModel::capturePhoto,
+                    onSwitchCamera = viewModel::switchCamera,
+                    onOpenGallery = {
+                        state.lastSavedUri?.let { uri ->
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, uri).apply {
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    hasPhoto = state.lastSavedUri != null,
+                    modifier = Modifier.padding(horizontal = 32.dp),
+                )
+            }
+        }
+
+        if (showSettings) {
+            SettingsSheet(onDismiss = { showSettings = false })
+        }
+
+        state.errorMessage?.let { message ->
+            Text(
+                text = message,
+                color = Color.White,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xCCB3261E))
+                    .clickable { viewModel.consumeError() }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TopBar(
+    state: CameraUiState,
+    onChange: ((CaptureSettings) -> CaptureSettings) -> Unit,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val settings = state.settings
+    val specs = state.specs
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconToggle(
+            icon = Icons.Default.Settings,
+            active = false,
+            contentDescription = stringResource(R.string.action_settings),
+            onClick = onOpenSettings,
+        )
+
+        if (specs?.hasFlash == true) {
+            IconToggle(
+                icon = when (settings.flashMode) {
+                    FlashMode.OFF -> Icons.Default.FlashOff
+                    FlashMode.AUTO -> Icons.Default.FlashAuto
+                    FlashMode.ON -> Icons.Default.FlashOn
+                    FlashMode.TORCH -> Icons.Default.Highlight
+                },
+                active = settings.flashMode != FlashMode.OFF,
+                onClick = {
+                    onChange { s ->
+                        s.copy(
+                            flashMode = when (s.flashMode) {
+                                FlashMode.OFF -> FlashMode.AUTO
+                                FlashMode.AUTO -> FlashMode.ON
+                                FlashMode.ON -> FlashMode.TORCH
+                                FlashMode.TORCH -> FlashMode.OFF
+                            }
+                        )
+                    }
+                },
+            )
+        }
+
+        IconToggle(
+            icon = Icons.Default.Timer,
+            active = settings.timer != TimerOption.OFF,
+            badge = if (settings.timer != TimerOption.OFF) "${settings.timer.seconds}" else null,
+            onClick = {
+                onChange { s ->
+                    s.copy(
+                        timer = when (s.timer) {
+                            TimerOption.OFF -> TimerOption.S2
+                            TimerOption.S2 -> TimerOption.S5
+                            TimerOption.S5 -> TimerOption.S10
+                            TimerOption.S10 -> TimerOption.OFF
+                        }
+                    )
+                }
+            },
+        )
+
+        IconToggle(
+            icon = Icons.Default.GridOn,
+            active = settings.gridEnabled,
+            onClick = { onChange { it.copy(gridEnabled = !it.gridEnabled) } },
+        )
+
+        if (specs?.supportsAnalysisStream == true) {
+            IconToggle(
+                icon = Icons.Default.BarChart,
+                active = settings.histogramEnabled,
+                onClick = { onChange { it.copy(histogramEnabled = !it.histogramEnabled) } },
+            )
+        }
+
+        IconToggle(
+            icon = Icons.Default.Straighten,
+            active = settings.levelEnabled,
+            onClick = { onChange { it.copy(levelEnabled = !it.levelEnabled) } },
+        )
+
+        TextToggle(
+            label = stringResource(settings.aspectRatio.labelRes),
+            active = settings.aspectRatio != AspectRatioOption.FULL,
+            onClick = {
+                onChange { s ->
+                    s.copy(
+                        aspectRatio = when (s.aspectRatio) {
+                            AspectRatioOption.FULL -> AspectRatioOption.R4_3
+                            AspectRatioOption.R4_3 -> AspectRatioOption.R16_9
+                            AspectRatioOption.R16_9 -> AspectRatioOption.R1_1
+                            AspectRatioOption.R1_1 -> AspectRatioOption.FULL
+                        }
+                    )
+                }
+            },
+        )
+
+        if (specs?.supportsRaw == true) {
+            TextToggle(
+                label = "RAW",
+                active = settings.saveRaw,
+                onClick = { onChange { it.copy(saveRaw = !it.saveRaw) } },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReadoutHud(state: CameraUiState, modifier: Modifier = Modifier) {
+    val settings = state.settings
+    val specs = state.specs ?: return
+    val isManual = settings.exposureMode == ExposureMode.MANUAL
+    val iso = if (isManual) settings.iso else state.liveReadout.iso
+    val shutter = if (isManual) settings.shutterSpeedNanos else state.liveReadout.exposureNanos
+    val modeLabel = stringResource(if (isManual) R.string.mode_manual else R.string.mode_auto)
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = buildString {
+                append(modeLabel)
+                append("  ·  ISO ")
+                append(iso?.toString() ?: "--")
+                append("  ·  ")
+                append(shutter?.let { formatShutter(it) } ?: "--")
+                append("  ·  ")
+                append(formatEv(settings.evCompensationSteps, specs.aeCompensationStep))
+                append(" EV")
+                if (settings.saveRaw) append("  ·  RAW")
+            },
+            color = if (isManual) Accent else Color.White.copy(alpha = 0.85f),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun ShutterRow(
+    isCapturing: Boolean,
+    onCapture: () -> Unit,
+    onSwitchCamera: () -> Unit,
+    onOpenGallery: () -> Unit,
+    hasPhoto: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = 0.12f))
+                .clickable(enabled = hasPhoto, onClick = onOpenGallery),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.PhotoLibrary,
+                contentDescription = stringResource(R.string.action_open_last_photo),
+                tint = Color.White.copy(alpha = if (hasPhoto) 0.9f else 0.35f),
+                modifier = Modifier.size(22.dp),
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(76.dp)
+                .clip(CircleShape)
+                .border(3.dp, Color.White, CircleShape)
+                .padding(6.dp)
+                .clip(CircleShape)
+                .background(if (isCapturing) Color.White.copy(alpha = 0.5f) else Color.White)
+                .clickable(enabled = !isCapturing, onClick = onCapture)
+                .alpha(if (isCapturing) 0.6f else 1f)
+        )
+
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.12f))
+                .clickable(onClick = onSwitchCamera),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Cameraswitch,
+                contentDescription = stringResource(R.string.action_switch_camera),
+                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun IconToggle(
+    icon: ImageVector,
+    active: Boolean,
+    onClick: () -> Unit,
+    badge: String? = null,
+    contentDescription: String? = null,
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(if (active) Accent.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.3f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = if (active) Accent else Color.White,
+            modifier = Modifier.size(20.dp),
+        )
+        if (badge != null) {
+            Text(
+                text = badge,
+                color = Accent,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(2.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TextToggle(label: String, active: Boolean, onClick: () -> Unit) {
+    Text(
+        text = label,
+        color = if (active) Accent else Color.White,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (active) Accent.copy(alpha = 0.22f) else Color.Black.copy(alpha = 0.3f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+    )
+}
+
+/** Converts a normalized point inside the camera frame back into view pixel coordinates. */
+private fun frameOffsetToView(
+    nx: Float,
+    ny: Float,
+    contentAspect: Float,
+    viewWidth: Int,
+    viewHeight: Int,
+): Offset {
+    val viewAspect = viewWidth.toFloat() / viewHeight
+    val contentWidth: Float
+    val contentHeight: Float
+    if (contentAspect > viewAspect) {
+        contentWidth = viewWidth.toFloat()
+        contentHeight = viewWidth / contentAspect
+    } else {
+        contentHeight = viewHeight.toFloat()
+        contentWidth = viewHeight * contentAspect
+    }
+    return Offset(
+        x = (viewWidth - contentWidth) / 2f + nx * contentWidth,
+        y = (viewHeight - contentHeight) / 2f + ny * contentHeight,
+    )
+}

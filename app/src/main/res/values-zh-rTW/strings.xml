@@ -1,0 +1,63 @@
+<resources>
+    <!-- Permission gate -->
+    <string name="permission_title">需要相機權限</string>
+    <string name="permission_rationale">請授予相機權限以開啟觀景窗。</string>
+    <string name="permission_denied">權限遭拒。請至系統設定開啟相機權限後再使用。</string>
+    <string name="permission_grant">授予權限</string>
+
+    <!-- Actions / content descriptions -->
+    <string name="action_settings">設定</string>
+    <string name="action_open_last_photo">開啟上一張照片</string>
+    <string name="action_switch_camera">切換鏡頭</string>
+    <string name="action_capture">拍照</string>
+
+    <!-- Exposure mode shown in the readout -->
+    <string name="mode_manual">M</string>
+    <string name="mode_auto">自動</string>
+
+    <!-- Parameter chips -->
+    <string name="param_iso">ISO</string>
+    <string name="param_shutter">快門</string>
+    <string name="param_wb">白平衡</string>
+    <string name="param_ev">EV</string>
+    <string name="param_focus">對焦</string>
+    <string name="param_zoom">變焦</string>
+    <string name="param_quality">品質</string>
+
+    <!-- Parameter editors -->
+    <string name="editor_iso">ISO 感光度</string>
+    <string name="editor_shutter">快門速度</string>
+    <string name="editor_wb">白平衡</string>
+    <string name="editor_ev">曝光補償</string>
+    <string name="editor_ev_disabled">曝光補償（手動模式下停用）</string>
+    <string name="editor_focus">對焦距離</string>
+    <string name="editor_zoom">變焦</string>
+    <string name="editor_quality">JPEG 品質</string>
+    <string name="toggle_auto">自動</string>
+    <string name="toggle_af">AF</string>
+    <string name="focus_infinity">∞</string>
+    <string name="focus_macro">微距</string>
+
+    <!-- Aspect ratio -->
+    <string name="aspect_full">完整</string>
+    <string name="aspect_4_3">4:3</string>
+    <string name="aspect_16_9">16:9</string>
+    <string name="aspect_1_1">1:1</string>
+
+    <!-- White balance presets -->
+    <string name="wb_auto">自動</string>
+    <string name="wb_incandescent">白熾燈</string>
+    <string name="wb_fluorescent">螢光燈</string>
+    <string name="wb_daylight">日光</string>
+    <string name="wb_cloudy">陰天</string>
+    <string name="wb_shade">陰影</string>
+    <string name="wb_twilight">黃昏</string>
+    <string name="wb_kelvin">色溫</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_language">語言</string>
+    <string name="settings_language_note">切換語言後 App 會重新啟動以套用。</string>
+    <string name="settings_close">關閉</string>
+    <string name="language_system">跟隨系統</string>
+</resources>

@@ -1,0 +1,63 @@
+<resources>
+    <!-- Permission gate -->
+    <string name="permission_title">カメラへのアクセスが必要です</string>
+    <string name="permission_rationale">ビューファインダーを開くにはカメラへのアクセスを許可してください。</string>
+    <string name="permission_denied">権限が拒否されました。システム設定でカメラへのアクセスを有効にしてください。</string>
+    <string name="permission_grant">権限を許可</string>
+
+    <!-- Actions / content descriptions -->
+    <string name="action_settings">設定</string>
+    <string name="action_open_last_photo">最後の写真を開く</string>
+    <string name="action_switch_camera">カメラを切り替え</string>
+    <string name="action_capture">撮影</string>
+
+    <!-- Exposure mode shown in the readout -->
+    <string name="mode_manual">M</string>
+    <string name="mode_auto">オート</string>
+
+    <!-- Parameter chips -->
+    <string name="param_iso">ISO</string>
+    <string name="param_shutter">シャッター</string>
+    <string name="param_wb">WB</string>
+    <string name="param_ev">EV</string>
+    <string name="param_focus">フォーカス</string>
+    <string name="param_zoom">ズーム</string>
+    <string name="param_quality">画質</string>
+
+    <!-- Parameter editors -->
+    <string name="editor_iso">ISO 感度</string>
+    <string name="editor_shutter">シャッタースピード</string>
+    <string name="editor_wb">ホワイトバランス</string>
+    <string name="editor_ev">露出補正</string>
+    <string name="editor_ev_disabled">露出補正（マニュアルでは無効）</string>
+    <string name="editor_focus">フォーカス距離</string>
+    <string name="editor_zoom">ズーム</string>
+    <string name="editor_quality">JPEG 画質</string>
+    <string name="toggle_auto">オート</string>
+    <string name="toggle_af">AF</string>
+    <string name="focus_infinity">∞</string>
+    <string name="focus_macro">マクロ</string>
+
+    <!-- Aspect ratio -->
+    <string name="aspect_full">フル</string>
+    <string name="aspect_4_3">4:3</string>
+    <string name="aspect_16_9">16:9</string>
+    <string name="aspect_1_1">1:1</string>
+
+    <!-- White balance presets -->
+    <string name="wb_auto">オート</string>
+    <string name="wb_incandescent">白熱灯</string>
+    <string name="wb_fluorescent">蛍光灯</string>
+    <string name="wb_daylight">昼光</string>
+    <string name="wb_cloudy">曇り</string>
+    <string name="wb_shade">日陰</string>
+    <string name="wb_twilight">夕暮れ</string>
+    <string name="wb_kelvin">ケルビン</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_note">言語を適用するためアプリを再起動します。</string>
+    <string name="settings_close">閉じる</string>
+    <string name="language_system">システムのデフォルト</string>
+</resources>
