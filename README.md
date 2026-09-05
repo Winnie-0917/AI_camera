@@ -126,11 +126,11 @@ subject rightwards rather than about moving the camera. Two rules live in `Angle
 - The front lens faces the photographer, so its left is their right: left/right and the sense of
   rotation are mirrored for the front camera, while up/down and closer/farther are not.
 
-Cadence: **3s** while the framing needs work, **5s** once it reports perfect, since there is
+Cadence: **5s** while the framing needs work, **8s** once it reports perfect, since there is
 nothing to correct while the shot is already good. Failures back off exponentially (15s, 30s, …
-capped at 2 min) so a rate-limited or offline API is not polled every 3 seconds.
+capped at 2 min) so a rate-limited or offline API is not polled on the normal cadence.
 
-> ⚠️ This is by far the most quota-hungry feature: a 3s cadence is ~20 requests per minute, which
+> ⚠️ This is by far the most quota-hungry feature: a 5s cadence is ~12 requests per minute, which
 > exhausts a free-tier key quickly. Expect `You exceeded your current quota` (HTTP 429) if you
 > leave it running. Frames are downscaled to 640px and sent at JPEG quality 80 to keep each call
 > small.

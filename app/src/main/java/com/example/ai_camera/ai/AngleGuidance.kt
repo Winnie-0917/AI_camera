@@ -94,8 +94,8 @@ object AngleGuidance {
  * while the shot is already good.
  */
 object AnglePolling {
-    const val ACTIVE_MS = 3_000L
-    const val SETTLED_MS = 5_000L
+    const val ACTIVE_MS = 5_000L
+    const val SETTLED_MS = 8_000L
 
     /** First wait after a failure, then doubling up to [MAX_BACKOFF_MS]. */
     const val BACKOFF_START_MS = 15_000L
@@ -106,7 +106,7 @@ object AnglePolling {
 
     /**
      * Wait after [consecutiveFailures] failed checks. A rate-limited or offline API must not be
-     * polled every 3s - that burns quota and battery for nothing - so failures back off
+     * polled on the normal cadence - that burns quota and battery for nothing - so failures back off
      * exponentially and recover as soon as one call succeeds.
      */
     fun backoffFor(consecutiveFailures: Int): Long {
