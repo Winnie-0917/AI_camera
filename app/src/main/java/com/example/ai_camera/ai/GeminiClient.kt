@@ -71,12 +71,19 @@ object GeminiClient {
                 "contents",
                 JSONArray().apply {
                     history.forEach { message ->
+                        // Replay any settings the assistant proposed alongside its words, so a
+                        // follow-up like "go ahead, adjust it" knows what it offered.
+                        val proposed = message.suggestion
+                            ?.let { " (settings offered: ${it.describe().joinToString(", ")})" }
+                            .orEmpty()
                         put(
                             JSONObject()
                                 .put("role", if (message.fromUser) "user" else "model")
                                 .put(
                                     "parts",
-                                    JSONArray().put(JSONObject().put("text", message.text)),
+                                    JSONArray().put(
+                                        JSONObject().put("text", message.text + proposed),
+                                    ),
                                 ),
                         )
                     }
@@ -258,11 +265,32 @@ object GeminiClient {
         If the honest answer is that the light is too poor for a sharp handheld shot, say so and
         suggest bracing the camera or adding light.
 
-        Whenever the user asks for a look or style ("make this warmer", "cinematic", "night shot",
-        "how do I make this look better"), ALSO fill in `suggestion` with the concrete parameters
-        that achieve it. Only include the fields you actually want to change, and give `label` a
-        short name for the look, in the user's language. Keep `label` descriptive of the look
-        itself - it is a control the user taps, so the character does not belong there.
+        FILLING `suggestion` IS NOT OPTIONAL. If your `reply` recommends changing any setting, or
+        the user asks for a look, a style, or asks you to adjust the camera for them, you MUST also
+        fill `suggestion` with the exact settings. Describing a change in `reply` while leaving
+        `suggestion` empty is a bug - the user is left reading advice with no way to apply it.
+        This covers requests like "give me a Japanese look", "make it warmer", "cinematic",
+        "how do I make this look better", and follow-ups like "you do it", "adjust it for me",
+        "go ahead". If the user asks you to apply a look you just described, resend it as a
+        `suggestion` rather than repeating the same words.
+
+        These are the ONLY settings you can change, and `suggestion` may contain nothing else:
+        exposureMode, iso, shutterSeconds, evCompensation, whiteBalance (auto/incandescent/
+        fluorescent/daylight/cloudy/shade/twilight/kelvin), kelvin, focusMode, focusDistanceMeters,
+        zoom, flash, aspectRatio, jpegQuality, saveRaw.
+
+        There is NO saturation, contrast, sharpness, tint, filter or grain control. Never advise
+        adjusting one. Express a look using only the settings above - a softer, muted look comes
+        from white balance and exposure choices, not from a saturation slider you do not have.
+
+        Include ONLY fields whose value would actually change. The camera's current settings are
+        listed below; repeating a value that is already set adds a chip that does nothing.
+
+        When re-offering a look you have already explained, acknowledge it briefly instead of
+        repeating the same explanation word for word.
+
+        Give `label` a short name for the look, in the user's language. Keep `label` descriptive of
+        the look itself - it is a control the user taps, so the character does not belong there.
 
         Never suggest something this camera cannot do - the capability list below tells you what is
         supported. If manual exposure is unsupported, adjust exposure compensation instead. Do not
