@@ -166,8 +166,8 @@ object GeminiClient {
             val payload = JSONObject(rawText(post(body, ANGLE_TIMEOUT_MS)))
             AngleAdvice(
                 perfect = payload.optBoolean("perfect"),
-                direction = AngleDirection.fromTag(payload.optString("direction")),
-                hint = payload.optString("hint").trim(),
+                issue = AngleIssue.fromTag(payload.optString("issue")),
+                note = payload.optString("note").trim(),
             )
         }
 
@@ -186,17 +186,26 @@ object GeminiClient {
     private const val ANGLE_TIMEOUT_MS = 20_000
 
     private val ANGLE_PROMPT = """
-        You judge camera framing for a photographer looking through a viewfinder. You are given the
-        current live frame. Decide whether the framing and angle are good, and if not, give ONE
-        simple physical correction the person can make right now.
+        You judge the framing of a photo from the live viewfinder frame you are given.
 
-        Set `perfect` to true only when the framing genuinely needs no change - level horizon,
-        subject well placed, nothing important cut off. Otherwise pick the single most useful
-        `direction` and describe it in `hint`.
+        Report ONLY what you observe about the image. Do NOT say what the photographer should do
+        and do not mention moving the camera - the app works out the correction itself. Getting
+        this wrong is the usual failure: describe where the problem IS, not how to fix it.
 
-        `hint` must be very short (at most about 8 words), an instruction the person can act on
-        immediately, e.g. "Tilt down a little, the horizon is high". Write `hint` in the language
-        with BCP-47 tag %s.
+        Pick the single most important `issue`:
+          subject_left / subject_right  - the main subject sits left / right of centre
+          subject_high / subject_low    - it sits too high / too low, or the horizon does
+          tilted_clockwise              - the scene looks rotated clockwise (horizon drops right)
+          tilted_counter_clockwise      - the scene looks rotated anti-clockwise
+          too_close / too_far           - the subject fills too much / too little of the frame
+          none                          - the framing is good
+
+        Set `perfect` to true only when the framing genuinely needs no change, and then use
+        issue `none`.
+
+        `note` is a very short description of what you see, at most about 6 words, e.g. "horizon
+        is high" or "subject near the left edge". Never phrase it as an instruction. Write `note`
+        in the language with BCP-47 tag %s.
     """.trimIndent()
 
     private val ANGLE_SCHEMA: JSONObject
@@ -207,14 +216,17 @@ object GeminiClient {
                 JSONObject()
                     .put("perfect", JSONObject().put("type", "BOOLEAN"))
                     .put(
-                        "direction",
+                        "issue",
                         JSONObject()
                             .put("type", "STRING")
-                            .put("enum", JSONArray(AngleDirection.entries.map { it.tag })),
+                            .put("enum", JSONArray(AngleIssue.entries.map { it.tag })),
                     )
-                    .put("hint", strField("Very short instruction, in the requested language.")),
+                    .put(
+                        "note",
+                        strField("Very short description of what is wrong, in the requested language."),
+                    ),
             )
-            .put("required", JSONArray().put("perfect").put("direction").put("hint"))
+            .put("required", JSONArray().put("perfect").put("issue").put("note"))
 
     private fun systemPrompt(cameraContext: String) = """
         You are a photography assistant built into a manual camera app. Give practical, specific

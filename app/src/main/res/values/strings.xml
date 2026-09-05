@@ -75,6 +75,16 @@
     <string name="ai_angle_stop">Stop</string>
     <string name="ai_angle_hint_longpress">Long-press for the angle guide</string>
 
+    <string name="ai_angle_hold">Hold steady</string>
+    <string name="ai_angle_left">Turn left</string>
+    <string name="ai_angle_right">Turn right</string>
+    <string name="ai_angle_up">Tilt up</string>
+    <string name="ai_angle_down">Tilt down</string>
+    <string name="ai_angle_rotate_left">Rotate left to level</string>
+    <string name="ai_angle_rotate_right">Rotate right to level</string>
+    <string name="ai_angle_closer">Move closer</string>
+    <string name="ai_angle_farther">Step back</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>

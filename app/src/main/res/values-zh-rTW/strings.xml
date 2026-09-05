@@ -73,6 +73,16 @@
     <string name="ai_angle_stop">停止</string>
     <string name="ai_angle_hint_longpress">長按可開啟角度輔助</string>
 
+    <string name="ai_angle_hold">保持不動</string>
+    <string name="ai_angle_left">鏡頭向左轉</string>
+    <string name="ai_angle_right">鏡頭向右轉</string>
+    <string name="ai_angle_up">鏡頭上抬</string>
+    <string name="ai_angle_down">鏡頭下壓</string>
+    <string name="ai_angle_rotate_left">逆時針轉正</string>
+    <string name="ai_angle_rotate_right">順時針轉正</string>
+    <string name="ai_angle_closer">靠近一點</string>
+    <string name="ai_angle_farther">後退一點</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">語言</string>

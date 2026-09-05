@@ -116,6 +116,16 @@ an unsupported request.
 model, and shows one physical correction — `→ move right`, `↓ tilt down`, `✓ perfect` — updating
 on a timer until you switch it off.
 
+The model is asked only to *describe* the image — "subject sits left of centre", "horizon is
+high" — and the app derives the instruction from that. Asking the model for the correction
+directly produced reversed advice, because with a subject on the left it reasons about pushing the
+subject rightwards rather than about moving the camera. Two rules live in `AngleGuidance`:
+
+- You centre a subject by turning the camera **towards** it. Panning left brings content at the
+  left edge in towards the middle.
+- The front lens faces the photographer, so its left is their right: left/right and the sense of
+  rotation are mirrored for the front camera, while up/down and closer/farther are not.
+
 Cadence: **3s** while the framing needs work, **5s** once it reports perfect, since there is
 nothing to correct while the shot is already good. Failures back off exponentially (15s, 30s, …
 capped at 2 min) so a rate-limited or offline API is not polled every 3 seconds.

@@ -76,6 +76,7 @@ import android.view.TextureView
 import com.example.ai_camera.ai.AiAssistantSheet
 import com.example.ai_camera.ai.AngleAdvice
 import com.example.ai_camera.ai.AngleDirection
+import com.example.ai_camera.ai.AngleGuidance
 import com.example.ai_camera.ai.AnglePolling
 import com.example.ai_camera.ai.GeminiClient
 import com.example.ai_camera.ai.GeminiException
@@ -264,6 +265,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 AngleGuideBanner(
                     advice = angleAdvice,
                     error = angleError,
+                    lensFacing = state.settings.lensFacing,
                     onStop = {
                         angleGuideOn = false
                         angleAdvice = null
@@ -530,10 +532,14 @@ private suspend fun grabPreviewJpeg(view: TextureView, maxEdge: Int = 640): Byte
 private fun AngleGuideBanner(
     advice: AngleAdvice?,
     error: String?,
+    lensFacing: Int,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val perfect = advice?.perfect == true
+    // The instruction is derived here rather than taken from the model, so left/right is correct
+    // for the lens in use.
+    val direction = advice?.let { AngleGuidance.directionFor(it.issue, lensFacing) }
     val tint = when {
         error != null -> Color(0xFFFF6B6B)
         perfect -> Color(0xFF34C759)
@@ -542,8 +548,14 @@ private fun AngleGuideBanner(
     val text = when {
         error != null -> error
         advice == null -> stringResource(R.string.ai_angle_analyzing)
-        perfect -> advice.hint.ifBlank { stringResource(R.string.ai_angle_perfect) }
-        else -> advice.hint
+        perfect || direction == null || direction == AngleDirection.NONE ->
+            stringResource(R.string.ai_angle_perfect)
+        else -> stringResource(direction.labelRes)
+    }
+    val arrow = when {
+        advice == null -> "…"
+        perfect || direction == null -> "✓"
+        else -> direction.arrow
     }
 
     Row(
@@ -553,20 +565,26 @@ private fun AngleGuideBanner(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = arrowFor(advice, perfect),
-            color = tint,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Text(text = arrow, color = tint, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.width(8.dp))
-        Text(
-            text = text,
-            color = Color.White,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.widthIn(max = 200.dp),
-        )
+        Column {
+            Text(
+                text = text,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.widthIn(max = 190.dp),
+            )
+            val note = advice?.note.orEmpty()
+            if (error == null && note.isNotBlank() && !perfect) {
+                Text(
+                    text = note,
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.widthIn(max = 190.dp),
+                )
+            }
+        }
         Spacer(Modifier.width(10.dp))
         Text(
             text = stringResource(R.string.ai_angle_stop),
@@ -578,22 +596,6 @@ private fun AngleGuideBanner(
                 .clickable(onClick = onStop)
                 .padding(horizontal = 8.dp, vertical = 4.dp),
         )
-    }
-}
-
-private fun arrowFor(advice: AngleAdvice?, perfect: Boolean): String = when {
-    advice == null -> "…"
-    perfect -> "✓"
-    else -> when (advice.direction) {
-        AngleDirection.LEFT -> "←"
-        AngleDirection.RIGHT -> "→"
-        AngleDirection.UP -> "↑"
-        AngleDirection.DOWN -> "↓"
-        AngleDirection.TILT_LEFT -> "↺"
-        AngleDirection.TILT_RIGHT -> "↻"
-        AngleDirection.CLOSER -> "＋"
-        AngleDirection.FARTHER -> "－"
-        AngleDirection.NONE -> "•"
     }
 }
 

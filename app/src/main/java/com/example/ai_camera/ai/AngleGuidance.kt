@@ -1,28 +1,92 @@
 package com.example.ai_camera.ai
 
-/** A physical correction the photographer can make right now. */
-enum class AngleDirection(val tag: String) {
+import android.hardware.camera2.CameraCharacteristics
+import androidx.annotation.StringRes
+import com.example.ai_camera.R
+
+/**
+ * What is wrong with the framing, stated purely as an observation about the image. The model is
+ * only asked to describe what it sees - never what the photographer should do - because asking it
+ * for the corrective action gets the direction backwards: with a subject left of centre it tends
+ * to answer "move right", reasoning about pushing the subject rightwards rather than about moving
+ * the camera.
+ */
+enum class AngleIssue(val tag: String) {
     NONE("none"),
-    LEFT("left"),
-    RIGHT("right"),
-    UP("up"),
-    DOWN("down"),
-    TILT_LEFT("tilt_left"),
-    TILT_RIGHT("tilt_right"),
-    CLOSER("closer"),
-    FARTHER("farther");
+    SUBJECT_LEFT("subject_left"),
+    SUBJECT_RIGHT("subject_right"),
+    SUBJECT_HIGH("subject_high"),
+    SUBJECT_LOW("subject_low"),
+    TILTED_CW("tilted_clockwise"),
+    TILTED_CCW("tilted_counter_clockwise"),
+    TOO_CLOSE("too_close"),
+    TOO_FAR("too_far");
 
     companion object {
-        fun fromTag(tag: String?): AngleDirection =
+        fun fromTag(tag: String?): AngleIssue =
             entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) } ?: NONE
     }
 }
 
+/** The correction to show the photographer. */
+enum class AngleDirection(val arrow: String, @StringRes val labelRes: Int) {
+    NONE("•", R.string.ai_angle_hold),
+    LEFT("←", R.string.ai_angle_left),
+    RIGHT("→", R.string.ai_angle_right),
+    UP("↑", R.string.ai_angle_up),
+    DOWN("↓", R.string.ai_angle_down),
+    ROTATE_LEFT("↺", R.string.ai_angle_rotate_left),
+    ROTATE_RIGHT("↻", R.string.ai_angle_rotate_right),
+    CLOSER("＋", R.string.ai_angle_closer),
+    FARTHER("－", R.string.ai_angle_farther),
+}
+
 data class AngleAdvice(
     val perfect: Boolean,
-    val direction: AngleDirection,
-    val hint: String,
+    val issue: AngleIssue,
+    /** Short context from the model, in the user's language. May be blank. */
+    val note: String,
 )
+
+object AngleGuidance {
+    /**
+     * Turns an image-space observation into the movement to instruct.
+     *
+     * Two things this gets right that a model asked for the action directly does not:
+     *
+     * 1. To centre a subject you turn the camera *towards* it - panning left brings content that
+     *    sits at the left edge in towards the middle. Same for tilting.
+     * 2. The front camera faces the photographer, so its own left is the photographer's right.
+     *    Left/right and the sense of rotation are therefore mirrored when phrasing the
+     *    instruction; up/down and closer/farther are unaffected by which way the lens points.
+     */
+    fun directionFor(issue: AngleIssue, lensFacing: Int): AngleDirection {
+        val direction = when (issue) {
+            AngleIssue.NONE -> AngleDirection.NONE
+            AngleIssue.SUBJECT_LEFT -> AngleDirection.LEFT
+            AngleIssue.SUBJECT_RIGHT -> AngleDirection.RIGHT
+            AngleIssue.SUBJECT_HIGH -> AngleDirection.UP
+            AngleIssue.SUBJECT_LOW -> AngleDirection.DOWN
+            AngleIssue.TILTED_CW -> AngleDirection.ROTATE_LEFT
+            AngleIssue.TILTED_CCW -> AngleDirection.ROTATE_RIGHT
+            AngleIssue.TOO_CLOSE -> AngleDirection.FARTHER
+            AngleIssue.TOO_FAR -> AngleDirection.CLOSER
+        }
+        return if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+            mirrored(direction)
+        } else {
+            direction
+        }
+    }
+
+    private fun mirrored(direction: AngleDirection): AngleDirection = when (direction) {
+        AngleDirection.LEFT -> AngleDirection.RIGHT
+        AngleDirection.RIGHT -> AngleDirection.LEFT
+        AngleDirection.ROTATE_LEFT -> AngleDirection.ROTATE_RIGHT
+        AngleDirection.ROTATE_RIGHT -> AngleDirection.ROTATE_LEFT
+        else -> direction
+    }
+}
 
 /**
  * Poll intervals for the live angle guide. Once the framing is right there is nothing to correct,

@@ -1,14 +1,14 @@
 package com.example.ai_camera
 
 import com.example.ai_camera.ai.AngleAdvice
-import com.example.ai_camera.ai.AngleDirection
+import com.example.ai_camera.ai.AngleIssue
 import com.example.ai_camera.ai.AnglePolling
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class AnglePollingTest {
     private fun advice(perfect: Boolean) =
-        AngleAdvice(perfect = perfect, direction = AngleDirection.NONE, hint = "")
+        AngleAdvice(perfect = perfect, issue = AngleIssue.NONE, note = "")
 
     @Test
     fun `polls at the active rate before the first result`() {

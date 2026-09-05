@@ -73,6 +73,16 @@
     <string name="ai_angle_stop">停止</string>
     <string name="ai_angle_hint_longpress">長押しでアングルガイド</string>
 
+    <string name="ai_angle_hold">そのままで</string>
+    <string name="ai_angle_left">左に向ける</string>
+    <string name="ai_angle_right">右に向ける</string>
+    <string name="ai_angle_up">上に向ける</string>
+    <string name="ai_angle_down">下に向ける</string>
+    <string name="ai_angle_rotate_left">左に回して水平に</string>
+    <string name="ai_angle_rotate_right">右に回して水平に</string>
+    <string name="ai_angle_closer">近づく</string>
+    <string name="ai_angle_farther">下がる</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">言語</string>
