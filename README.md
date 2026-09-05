@@ -132,6 +132,13 @@ subject rightwards rather than about moving the camera. Two rules live in `Angle
 - The front lens faces the photographer, so its left is their right: left/right and the sense of
   rotation are mirrored for the front camera, while up/down and closer/farther are not.
 
+Each call carries the previous two checks (a 3-scan sliding window, model-only — the viewfinder
+shows just the latest). Judging every frame independently made it oscillate: a subject near the
+middle reads as slightly left on one check and slightly right on the next, so it sent the user
+back and forth. The prompt also judges generously — near the middle third counts as centred, a few
+degrees off counts as level — because a bar that is never reached means the guide never stops
+correcting.
+
 Cadence: **5s** while the framing needs work, **8s** once it reports perfect, since there is
 nothing to correct while the shot is already good. Failures back off exponentially (15s, 30s, …
 capped at 2 min) so a rate-limited or offline API is not polled on the normal cadence.

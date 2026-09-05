@@ -127,9 +127,21 @@ object GeminiClient {
      * Judges framing from a viewfinder frame. Kept on a short timeout because this runs on a
      * repeating timer - a slow reply is better dropped than queued behind the next one.
      */
-    suspend fun analyzeAngle(jpeg: ByteArray, languageTag: String): AngleAdvice =
+    suspend fun analyzeAngle(
+        jpeg: ByteArray,
+        languageTag: String,
+        /** Earlier checks in the sliding window, oldest first. Context for the model only. */
+        recentChecks: List<String> = emptyList(),
+    ): AngleAdvice =
         withContext(Dispatchers.IO) {
             if (!isConfigured) throw GeminiException("MISSING_KEY")
+
+            val historyText = if (recentChecks.isEmpty()) {
+                "No previous checks - this is the first look."
+            } else {
+                "Your previous checks, oldest first:\n" +
+                    recentChecks.joinToString("\n") { "- $it" }
+            }
 
             val body = JSONObject().apply {
                 put(
@@ -164,7 +176,12 @@ object GeminiClient {
                                             .put("data", Base64.encodeToString(jpeg, Base64.NO_WRAP)),
                                     ),
                                 )
-                                .put(JSONObject().put("text", "Judge the framing of this shot.")),
+                                .put(
+                                    JSONObject().put(
+                                        "text",
+                                        "$historyText\n\nJudge the framing of this shot.",
+                                    ),
+                                ),
                         ),
                     ),
                 )
@@ -207,8 +224,22 @@ object GeminiClient {
           too_close / too_far           - the subject fills too much / too little of the frame
           none                          - the framing is good
 
-        Set `perfect` to true only when the framing genuinely needs no change, and then use
-        issue `none`.
+        Judge generously. Someone is holding a phone and this runs every few seconds, so aim for
+        "good enough to shoot", not a textbook composition:
+        - A subject roughly centred - anywhere near the middle third, or sensibly placed off-centre
+          - is fine. Report `none` and set `perfect` true.
+        - A horizon within a few degrees of level is level. Do not report a tilt for that.
+        - Only report an issue a person would plainly notice and actually want to fix.
+        Reaching `perfect` is a normal, frequent outcome, not a rare reward. When you are unsure
+        whether something is worth correcting, it is not: answer `perfect`.
+
+        Your own previous checks are listed below, oldest first. Use them:
+        - Do not reverse yourself. If you asked for a turn one way and the subject has moved
+          towards the middle, the correction worked - answer `perfect` rather than sending them
+          back the other way.
+        - Alternating between opposite directions on consecutive checks is the worst outcome
+          here, worse than staying quiet. If you find yourself about to do it, answer `perfect`.
+        - Repeating the same issue is fine when nothing has changed.
 
         `note` is a very short description of what you see, at most about 6 words, e.g. "horizon
         is high" or "subject near the left edge". Never phrase it as an instruction. Write `note`

@@ -54,6 +54,19 @@ data class AngleAdvice(
 
 object AngleGuidance {
     /**
+     * How many checks the model sees at once, counting the current frame. Each frame is judged on
+     * its own otherwise, which makes the guide oscillate: a subject near the middle reads as
+     * slightly left on one check and slightly right on the next, so it asks the user to turn back
+     * and forth forever. The earlier checks are context for the model only - the UI shows just
+     * the latest.
+     */
+    const val HISTORY_SCANS = 3
+
+    /** The previous checks to carry forward, newest last. */
+    fun slidingWindow(previous: List<AngleAdvice>, latest: AngleAdvice): List<AngleAdvice> =
+        (previous + latest).takeLast(HISTORY_SCANS - 1)
+
+    /**
      * Turns an image-space observation into the movement to instruct.
      *
      * Two things this gets right that a model asked for the action directly does not:

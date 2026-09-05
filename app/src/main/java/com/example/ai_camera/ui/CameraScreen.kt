@@ -157,12 +157,24 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     LaunchedEffect(angleGuideOn) {
         if (!angleGuideOn) return@LaunchedEffect
         var failures = 0
+        // Held here rather than in UI state: the model needs the recent checks to stay consistent,
+        // but the viewfinder only ever shows the latest one.
+        var window = emptyList<AngleAdvice>()
         while (isActive) {
             val startedAt = SystemClock.elapsedRealtime()
             val jpeg = previewView?.let { grabPreviewJpeg(it) }
             if (jpeg != null) {
                 try {
-                    angleAdvice = GeminiClient.analyzeAngle(jpeg, languageTag)
+                    val advice = GeminiClient.analyzeAngle(
+                        jpeg,
+                        languageTag,
+                        window.map { past ->
+                            val told = AngleGuidance.directionFor(past.issue, state.settings.lensFacing)
+                            "saw ${past.issue.tag}, told the user: ${told.name.lowercase()}"
+                        },
+                    )
+                    window = AngleGuidance.slidingWindow(window, advice)
+                    angleAdvice = advice
                     angleError = null
                     failures = 0
                 } catch (e: Exception) {
