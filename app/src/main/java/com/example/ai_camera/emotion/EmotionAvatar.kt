@@ -41,7 +41,7 @@ fun EmotionAvatar(
     reply: String?,
     classifier: EmotionClassifier,
     modifier: Modifier = Modifier,
-    size: Dp = 32.dp,
+    size: Dp = 48.dp,
 ) {
     var emotion by remember { mutableStateOf(Emotion.IDLE) }
 
@@ -72,11 +72,20 @@ fun EmotionAvatar(
             .build()
     }
 
-    AsyncImage(
-        model = ImageRequest.Builder(context)
+    // Keyed on the emotion so the request is rebuilt only when the face actually changes.
+    // Animated drawables are not memory-cached, so a request rebuilt on every recomposition
+    // re-decodes the GIF and restarts it from frame one - which reads as flicker.
+    val request = remember(context, emotion) {
+        ImageRequest.Builder(context)
             .data(emotion.assetPath)
-            .crossfade(true)
-            .build(),
+            // No crossfade: it draws the outgoing and incoming GIF on top of each other, and with
+            // two similar mascots that looks like a doubled, flickering image rather than a fade.
+            .crossfade(false)
+            .build()
+    }
+
+    AsyncImage(
+        model = request,
         imageLoader = imageLoader,
         contentDescription = null,
         contentScale = ContentScale.Crop,
