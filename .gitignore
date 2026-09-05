@@ -17,3 +17,6 @@
 .cxx
 local.properties
 .env
+
+# Local ML training assets - 391MB of PyTorch weights, not shipped in the APK
+/emotion_model/

@@ -140,6 +140,9 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     val previewRotation = remember(specs) {
         specs?.let { PreviewOrientation.displayRotationFor(it.lensFacing) } ?: 0
     }
+    val mirrorPreview = remember(specs) {
+        specs?.let { PreviewOrientation.isMirrored(it.lensFacing) } ?: false
+    }
     val analysisFlip = remember(specs) {
         specs?.let { PreviewOrientation.analysisFlipsVertically(it.lensFacing) } ?: false
     }
@@ -224,6 +227,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         CameraPreview(
             contentAspect = contentAspect,
             previewRotation = previewRotation,
+            mirrorPreview = mirrorPreview,
             onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
             onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
             onTapFocus = { nx, ny ->
