@@ -118,4 +118,19 @@
     <string name="settings_language_note">言語を適用するためアプリを再起動します。</string>
     <string name="settings_close">閉じる</string>
     <string name="language_system">システムのデフォルト</string>
+
+    <!-- Photo styles and the quick tools sheet -->
+    <string name="style_title">スタイル</string>
+    <string name="style_natural">ナチュラル</string>
+    <string name="style_soft">ソフト</string>
+    <string name="style_cream">クリーム</string>
+    <string name="style_fresh">フレッシュ</string>
+    <string name="style_retro">レトロ</string>
+    <string name="style_mono">モノクロ</string>
+    <string name="style_strength">強度</string>
+    <string name="style_done">完了</string>
+    <string name="group_tools">ツール</string>
+    <string name="panel_histogram">ヒストグラム</string>
+    <string name="action_tools">ツール</string>
+    <string name="action_style">スタイル</string>
 </resources>

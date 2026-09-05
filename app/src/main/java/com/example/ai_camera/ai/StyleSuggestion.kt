@@ -6,6 +6,7 @@ import com.example.ai_camera.camera.CaptureSettings
 import com.example.ai_camera.camera.ExposureMode
 import com.example.ai_camera.camera.FlashMode
 import com.example.ai_camera.camera.FocusMode
+import com.example.ai_camera.camera.PhotoStyle
 import com.example.ai_camera.camera.WbPreset
 import org.json.JSONObject
 import kotlin.math.roundToInt
@@ -31,6 +32,8 @@ data class StyleSuggestion(
     val aspectRatio: String? = null,
     val jpegQuality: Int? = null,
     val saveRaw: Boolean? = null,
+    val photoStyle: String? = null,
+    val styleStrength: Int? = null,
 ) {
     /** Result of applying: the new settings plus what was actually changed or dropped. */
     data class Applied(
@@ -186,6 +189,25 @@ data class StyleSuggestion(
             }
         }
 
+        photoStyle?.let { name ->
+            val parsed = PhotoStyle.entries.firstOrNull { it.name.equals(name, true) }
+            if (parsed != null) {
+                next = next.copy(style = parsed)
+                applied += "Style ${parsed.name.lowercase()}"
+            } else {
+                skipped += "style \"$name\""
+            }
+        }
+
+        // Only meaningful alongside a look, and only once there is one to dial back.
+        styleStrength?.let {
+            if (next.style != PhotoStyle.NATURAL) {
+                val value = it.coerceIn(0, 100)
+                next = next.copy(styleStrength = value)
+                applied += "Strength $value"
+            }
+        }
+
         return Applied(next, current, applied, skipped)
     }
 
@@ -204,6 +226,8 @@ data class StyleSuggestion(
         aspectRatio?.let { add(it) }
         jpegQuality?.let { add("Quality $it") }
         saveRaw?.let { add(if (it) "RAW on" else "RAW off") }
+        photoStyle?.let { add("Style ${it.lowercase()}") }
+        styleStrength?.let { if (photoStyle != null) add("Strength $it") }
     }
 
     companion object {
@@ -225,6 +249,8 @@ data class StyleSuggestion(
                 aspectRatio = json.optStringOrNull("aspectRatio"),
                 jpegQuality = json.optIntOrNull("jpegQuality"),
                 saveRaw = if (json.has("saveRaw")) json.optBoolean("saveRaw") else null,
+                photoStyle = json.optStringOrNull("photoStyle"),
+                styleStrength = json.optIntOrNull("styleStrength"),
             ).takeIf { it.describe().isNotEmpty() }
         }
 

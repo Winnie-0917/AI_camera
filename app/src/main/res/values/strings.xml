@@ -124,4 +124,19 @@
     <string name="language_english" translatable="false">English</string>
     <string name="language_zh_tw" translatable="false">繁體中文</string>
     <string name="language_ja" translatable="false">日本語</string>
+
+    <!-- Photo styles and the quick tools sheet -->
+    <string name="style_title">Style</string>
+    <string name="style_natural">Natural</string>
+    <string name="style_soft">Soft</string>
+    <string name="style_cream">Cream</string>
+    <string name="style_fresh">Fresh</string>
+    <string name="style_retro">Retro</string>
+    <string name="style_mono">Mono</string>
+    <string name="style_strength">Strength</string>
+    <string name="style_done">Done</string>
+    <string name="group_tools">Tools</string>
+    <string name="panel_histogram">Histogram</string>
+    <string name="action_tools">Tools</string>
+    <string name="action_style">Style</string>
 </resources>

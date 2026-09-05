@@ -25,6 +25,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -50,6 +53,8 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.FilterVintage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -110,6 +115,7 @@ import com.example.ai_camera.camera.WbPreset
 import com.example.ai_camera.camera.CaptureSettings
 import com.example.ai_camera.camera.ExposureMode
 import com.example.ai_camera.camera.FlashMode
+import com.example.ai_camera.camera.PhotoStyle
 import com.example.ai_camera.camera.TimerOption
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -155,6 +161,16 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     val analysisFlip = remember(specs) {
         specs?.let { PreviewOrientation.analysisFlipsVertically(it.lensFacing) } ?: false
     }
+
+    // Measured out here: a dialog window reports no insets of its own, so the style sheet cannot
+    // work out how much room it really has once the system bars are taken off.
+    val systemBars = WindowInsets.systemBars.asPaddingValues()
+    val styleSheetHeight = LocalConfiguration.current.screenHeightDp.dp -
+        systemBars.calculateTopPadding() - systemBars.calculateBottomPadding()
+
+    var showTools by remember { mutableStateOf(false) }
+    var showStyle by remember { mutableStateOf(false) }
+    var styleThumb by remember { mutableStateOf<Bitmap?>(null) }
 
     var topChromePx by remember { mutableStateOf(0) }
     var bottomChromePx by remember { mutableStateOf(0) }
@@ -282,6 +298,8 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             contentAspect = contentAspect,
             previewRotation = previewRotation,
             mirrorPreview = mirrorPreview,
+            style = state.settings.style,
+            styleStrength = state.settings.styleStrength,
             onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
             onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
             onTapFocus = { nx, ny ->
@@ -335,20 +353,19 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         Column(modifier = Modifier.fillMaxSize()) {
             TopChrome(
                 assistantActive = assistantMode != AssistantMode.OFF,
-                histogramOn = state.settings.histogramEnabled,
-                histogramAvailable = specs?.supportsAnalysisStream == true,
+                toolsActive = state.settings.histogramEnabled || state.settings.gridEnabled ||
+                    state.settings.levelEnabled || state.settings.timer != TimerOption.OFF ||
+                    state.settings.flashMode != FlashMode.OFF,
                 onOpenSettings = { showSettings = true },
                 onAssistant = { showAssistant = true },
                 onAssistantLongPress = { showModePicker = true },
-                onToggleHistogram = {
-                    viewModel.updateSettings { it.copy(histogramEnabled = !it.histogramEnabled) }
-                },
+                onOpenTools = { showTools = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .onSizeChanged { topChromePx = it.height }
                     .background(CameraPalette.Surface)
                     .statusBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 12.dp),
             )
 
             if (angleGuideOn) {
@@ -395,7 +412,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 onSelect = { ratio -> viewModel.updateSettings { it.copy(zoomRatio = ratio) } },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 10.dp),
+                    .padding(bottom = 26.dp),
             )
 
             Column(
@@ -432,19 +449,34 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 )
 
                 Spacer(Modifier.height(10.dp))
-                ModeSwitch(
-                    proMode = proMode,
-                    onSimple = {
-                        proMode = false
-                        showProPanel = false
-                    },
-                    onPro = {
-                        // Second tap while already in pro opens the full parameter panel, so the
-                        // detailed controls are one gesture away without a separate button.
-                        if (proMode) showProPanel = true else proMode = true
-                    },
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                )
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    StyleButton(
+                        active = state.settings.style != PhotoStyle.NATURAL,
+                        label = stringResource(state.settings.style.labelRes),
+                        onClick = {
+                            // Snapshotting here, not inside the sheet, keeps the tiles showing the
+                            // scene as it was framed rather than a black frame mid-transition.
+                            styleThumb = previewView?.let { grabPreviewBitmap(it, mirrorPreview) }
+                            showStyle = true
+                        },
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 24.dp),
+                    )
+                    ModeSwitch(
+                        proMode = proMode,
+                        onSimple = {
+                            proMode = false
+                            showProPanel = false
+                        },
+                        onPro = {
+                            // Second tap while already in pro opens the full parameter panel, so
+                            // the detailed controls are one gesture away without a separate button.
+                            if (proMode) showProPanel = true else proMode = true
+                        },
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                }
             }
         }
 
@@ -466,6 +498,40 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                         .navigationBarsPadding(),
                 )
             }
+        }
+
+        if (showTools) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(CameraPalette.OnPreviewScrim)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { showTools = false },
+            ) {
+                ToolsSheet(
+                    state = state,
+                    onChange = viewModel::updateSettings,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding(),
+                )
+            }
+        }
+
+        if (showStyle) {
+            StyleSheet(
+                current = state.settings.style,
+                strength = state.settings.styleStrength,
+                preview = styleThumb,
+                availableHeight = styleSheetHeight,
+                onSelect = { style -> viewModel.updateSettings { it.copy(style = style) } },
+                onStrengthChange = { value ->
+                    viewModel.updateSettings { it.copy(styleStrength = value) }
+                },
+                onDismiss = { showStyle = false },
+            )
         }
 
         if (showModePicker) {
@@ -657,6 +723,53 @@ private fun TopBar(
     }
 }
 
+/** A small, correctly-oriented frame for the style tiles. */
+private fun grabPreviewBitmap(view: TextureView, mirror: Boolean, maxEdge: Int = 420): Bitmap? {
+    if (view.width <= 0 || view.height <= 0 || !view.isAvailable) return null
+    val scale = maxEdge.toFloat() / maxOf(view.width, view.height)
+    val w = if (scale < 1f) (view.width * scale).toInt() else view.width
+    val h = if (scale < 1f) (view.height * scale).toInt() else view.height
+    // getBitmap hands back the raw surface texture and ignores the view transform, so a selfie
+    // comes back unmirrored and the tiles would not match the viewfinder beside them.
+    val raw = runCatching { view.getBitmap(w, h) }.getOrNull() ?: return null
+    if (!mirror) return raw
+    val matrix = Matrix().apply { postScale(-1f, 1f) }
+    return Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
+        .also { if (it !== raw) raw.recycle() }
+}
+
+/** The current look, named on the button so it reads without opening the picker. */
+@Composable
+private fun StyleButton(
+    active: Boolean,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (active) CameraPalette.AccentSoft else CameraPalette.CreamDim)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.FilterVintage,
+            contentDescription = stringResource(R.string.action_style),
+            tint = if (active) CameraPalette.AccentDeep else CameraPalette.TextSecondary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = label,
+            color = if (active) CameraPalette.AccentDeep else CameraPalette.TextSecondary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
 /**
  * Snapshots the viewfinder for the angle guide. Downscaled hard: the model only needs to judge
  * framing, and a small frame keeps upload latency and token cost down on a repeating timer.
@@ -695,20 +808,21 @@ private suspend fun grabPreviewJpeg(
 }
 
 /**
- * The strip above the viewfinder: settings, the assistant, and the histogram toggle. Everything
- * else that used to live up here moved into [ProPanel] - a row of eight icons is chrome, not a
- * camera.
+ * The strip above the viewfinder: settings, the assistant, and the tools button.
+ *
+ * The row of eight icons that used to live up here is now one button that opens [ToolsSheet] -
+ * the icons alone never showed which state each tool was in.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TopChrome(
     assistantActive: Boolean,
-    histogramOn: Boolean,
-    histogramAvailable: Boolean,
+    /** Tinted when any tool behind the button is doing something, so it is not a silent state. */
+    toolsActive: Boolean,
     onOpenSettings: () -> Unit,
     onAssistant: () -> Unit,
     onAssistantLongPress: () -> Unit,
-    onToggleHistogram: () -> Unit,
+    onOpenTools: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -721,7 +835,7 @@ private fun TopChrome(
             contentDescription = stringResource(R.string.action_settings),
             tint = CameraPalette.TextSecondary,
             modifier = Modifier
-                .size(26.dp)
+                .size(34.dp)
                 .clip(CircleShape)
                 .clickable(onClick = onOpenSettings),
         )
@@ -738,17 +852,13 @@ private fun TopChrome(
         }
 
         Icon(
-            imageVector = Icons.Default.BarChart,
-            contentDescription = null,
-            tint = when {
-                !histogramAvailable -> CameraPalette.Divider
-                histogramOn -> CameraPalette.Accent
-                else -> CameraPalette.TextSecondary
-            },
+            imageVector = Icons.Default.Tune,
+            contentDescription = stringResource(R.string.action_tools),
+            tint = if (toolsActive) CameraPalette.AccentDeep else CameraPalette.TextSecondary,
             modifier = Modifier
-                .size(26.dp)
+                .size(34.dp)
                 .clip(CircleShape)
-                .clickable(enabled = histogramAvailable, onClick = onToggleHistogram),
+                .clickable(onClick = onOpenTools),
         )
     }
 }
@@ -971,6 +1081,10 @@ private fun cameraContextOf(state: CameraUiState): String {
         appendLine("- Zoom: ${formatZoom(s.zoomRatio)}")
         appendLine("- Flash: ${s.flashMode.name.lowercase()}")
         appendLine("- Aspect ratio: ${s.aspectRatio.name.removePrefix("R").replace('_', ':')}")
+        appendLine(
+            "- Photo style: " + s.style.name.lowercase() +
+                if (s.style != PhotoStyle.NATURAL) " at strength ${s.styleStrength}" else ""
+        )
         appendLine("- RAW capture: ${if (s.saveRaw) "on" else "off"}")
         appendLine("- Self timer: ${s.timer.seconds}s")
         appendLine(

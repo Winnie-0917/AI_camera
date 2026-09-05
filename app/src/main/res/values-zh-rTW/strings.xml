@@ -118,4 +118,19 @@
     <string name="settings_language_note">切換語言後 App 會重新啟動以套用。</string>
     <string name="settings_close">關閉</string>
     <string name="language_system">跟隨系統</string>
+
+    <!-- Photo styles and the quick tools sheet -->
+    <string name="style_title">風格</string>
+    <string name="style_natural">原生</string>
+    <string name="style_soft">柔光</string>
+    <string name="style_cream">奶油</string>
+    <string name="style_fresh">清新</string>
+    <string name="style_retro">復古</string>
+    <string name="style_mono">黑白</string>
+    <string name="style_strength">強度</string>
+    <string name="style_done">完成</string>
+    <string name="group_tools">工具</string>
+    <string name="panel_histogram">直方圖</string>
+    <string name="action_tools">工具</string>
+    <string name="action_style">風格</string>
 </resources>

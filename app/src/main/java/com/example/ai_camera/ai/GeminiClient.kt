@@ -390,11 +390,17 @@ object GeminiClient {
         These are the ONLY settings you can change, and `suggestion` may contain nothing else:
         exposureMode, iso, shutterSeconds, evCompensation, whiteBalance (auto/incandescent/
         fluorescent/daylight/cloudy/shade/twilight/kelvin), kelvin, focusMode, focusDistanceMeters,
-        zoom, flash, aspectRatio, jpegQuality, saveRaw.
+        zoom, flash, aspectRatio, jpegQuality, saveRaw, photoStyle, styleStrength.
 
-        There is NO saturation, contrast, sharpness, tint, filter or grain control. Never advise
-        adjusting one. Express a look using only the settings above - a softer, muted look comes
-        from white balance and exposure choices, not from a saturation slider you do not have.
+        photoStyle is the app's own colour grade, applied to the viewfinder and the saved JPEG:
+        natural (ungraded), soft (hazy, lifted blacks), cream (warm and creamy), fresh (cool and
+        crisp), retro (faded and warm), mono (black and white). styleStrength is 0-100 and only
+        does anything alongside one of the graded looks. Reach for a style when the request is
+        about the look of the picture, and for exposure or white balance when it is about how the
+        scene is actually recorded; a request like "make it warmer" is often best as both.
+
+        Beyond those there is NO saturation, contrast, sharpness, tint or grain control. Never
+        advise adjusting one.
 
         Include ONLY fields whose value would actually change. The camera's current settings are
         listed below; repeating a value that is already set adds a chip that does nothing.
@@ -465,6 +471,16 @@ object GeminiClient {
                                     .put("aspectRatio", enumField(listOf("full", "4:3", "16:9", "1:1")))
                                     .put("jpegQuality", numField("INTEGER", "JPEG quality 50-100."))
                                     .put("saveRaw", JSONObject().put("type", "BOOLEAN"))
+                                    .put(
+                                        "photoStyle",
+                                        enumField(
+                                            listOf("natural", "soft", "cream", "fresh", "retro", "mono")
+                                        ),
+                                    )
+                                    .put(
+                                        "styleStrength",
+                                        numField("INTEGER", "Style strength 0-100."),
+                                    )
                             )
                             .put("required", JSONArray().put("label")),
                     ),

@@ -24,6 +24,8 @@ object CameraPalette {
 
     val TextPrimary = Color(0xFF33302B)
     val TextSecondary = Color(0xFF8A8378)
+    /** The muted greige of a primary action button. */
+    val Taupe = Color(0xFFA79E90)
     val Divider = Color(0xFFE4DDD1)
 
     /** Overlays drawn on top of the preview, where the scene behind can be any brightness. */

@@ -381,11 +381,14 @@ class CameraController(private val appContext: Context) {
             // aspect crop strips the tag the camera wrote, so it always has to be restored here.
             orientationDegrees = jpegOrientation(),
         )
-        val finalJpeg = if (settings.aspectRatio.ratio > 0f) {
-            ImageProcessing.cropToAspect(jpegBytes, settings.aspectRatio.ratio, settings.jpegQuality)
-        } else {
-            jpegBytes
-        }
+        // The DNG deliberately skips this: raw is meant to be ungraded.
+        val finalJpeg = ImageProcessing.process(
+            jpegBytes = jpegBytes,
+            targetRatio = settings.aspectRatio.ratio,
+            style = settings.style,
+            styleStrength = settings.styleStrength,
+            quality = settings.jpegQuality,
+        )
         val jpegUri = ImageSaver.saveJpeg(appContext, finalJpeg, exif)
 
         var rawUri: Uri? = null

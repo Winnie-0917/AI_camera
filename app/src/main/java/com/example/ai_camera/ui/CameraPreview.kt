@@ -1,7 +1,11 @@
 package com.example.ai_camera.ui
 
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Matrix
+import android.graphics.RenderEffect
 import android.graphics.SurfaceTexture
+import android.os.Build
 import android.view.TextureView
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -15,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.ai_camera.camera.PhotoStyle
 
 /**
  * Camera viewfinder. The frame is letterboxed rather than center-cropped so the user always
@@ -34,6 +39,9 @@ fun CameraPreview(
     previewRotation: Int,
     /** Mirror the displayed frame horizontally, the selfie convention for a front lens. */
     mirrorPreview: Boolean,
+    /** Graded live so the viewfinder shows the look that will actually be saved. */
+    style: PhotoStyle,
+    styleStrength: Int,
     onSurfaceAvailable: (SurfaceTexture) -> Unit,
     onSurfaceDestroyed: () -> Unit,
     onTapFocus: (Float, Float) -> Unit,
@@ -78,6 +86,7 @@ fun CameraPreview(
                 }
             },
             update = { view ->
+                applyStyle(view, style, styleStrength)
                 if (contentAspect != null && view.width > 0 && view.height > 0) {
                     applyLetterboxTransform(
                         view,
@@ -107,6 +116,26 @@ fun CameraPreview(
                 }
         )
     }
+}
+
+/**
+ * Grades the viewfinder itself, so what is framed is what gets saved.
+ *
+ * RenderEffect only exists from API 31. Below that the preview stays ungraded and the style is
+ * applied at capture; the alternative - rebuilding the viewfinder on GLSurfaceView with a shader -
+ * is a lot of machinery for the handful of remaining Android 11 devices.
+ */
+private fun applyStyle(view: TextureView, style: PhotoStyle, strength: Int) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+    view.setRenderEffect(
+        if (style.isNoOp(strength)) {
+            null
+        } else {
+            RenderEffect.createColorFilterEffect(
+                ColorMatrixColorFilter(ColorMatrix(style.matrixFor(strength)))
+            )
+        }
+    )
 }
 
 /** Maps a view-space touch into 0..1 coordinates inside the letterboxed frame, or null if outside. */

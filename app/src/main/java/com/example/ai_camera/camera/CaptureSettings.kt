@@ -51,6 +51,9 @@ data class CaptureSettings(
     val gridEnabled: Boolean = false,
     val histogramEnabled: Boolean = false,
     val levelEnabled: Boolean = false,
+    val style: PhotoStyle = PhotoStyle.NATURAL,
+    /** 0..100, as shown on the strength slider. */
+    val styleStrength: Int = 60,
 ) {
     companion object {
         /** Sensible manual defaults once real ranges are known, clamped into range. */

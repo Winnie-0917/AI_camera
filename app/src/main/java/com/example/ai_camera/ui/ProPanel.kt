@@ -307,7 +307,7 @@ fun ProPanel(
 private enum class Overlay { GRID, LEVEL }
 
 @Composable
-private fun flashLabel(mode: FlashMode): String = stringResource(
+internal fun flashLabel(mode: FlashMode): String = stringResource(
     when (mode) {
         FlashMode.OFF -> R.string.mode_off
         FlashMode.AUTO -> R.string.toggle_auto
@@ -317,7 +317,7 @@ private fun flashLabel(mode: FlashMode): String = stringResource(
 )
 
 @Composable
-private fun PanelSection(title: String) {
+internal fun PanelSection(title: String) {
     Spacer(Modifier.height(14.dp))
     Text(
         text = title,
@@ -329,7 +329,7 @@ private fun PanelSection(title: String) {
 }
 
 @Composable
-private fun PanelRow(label: String, content: @Composable () -> Unit) {
+internal fun PanelRow(label: String, content: @Composable () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -347,7 +347,7 @@ private fun PanelRow(label: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun <T> PillGroup(
+internal fun <T> PillGroup(
     options: List<Pair<String, T>>,
     isSelected: (T) -> Boolean,
     onSelect: (T) -> Unit,
