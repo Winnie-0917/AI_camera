@@ -20,3 +20,7 @@ local.properties
 
 # Local ML training assets - 391MB of PyTorch weights, not shipped in the APK
 /emotion_model/
+
+# JVM crash dumps
+hs_err_pid*.log
+replay_pid*.log
