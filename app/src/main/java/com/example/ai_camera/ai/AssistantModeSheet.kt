@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.ai_camera.ui.CameraPalette
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,7 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ai_camera.R
 
-private val Accent = Color(0xFFFFD60A)
+private val Accent = CameraPalette.AccentDeep
 
 /** Long-pressing the assistant button picks what it does in the background. */
 @Composable
@@ -40,12 +41,12 @@ fun AssistantModeSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF1C1C1E))
+                .background(CameraPalette.Surface)
                 .padding(20.dp),
         ) {
             Text(
                 text = stringResource(R.string.assistant_mode_title),
-                color = Color.White,
+                color = CameraPalette.TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -84,7 +85,7 @@ private fun ModeRow(mode: AssistantMode, selected: Boolean, onClick: () -> Unit)
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) Accent.copy(alpha = 0.15f) else Color.Transparent)
+            .background(if (selected) CameraPalette.AccentSoft else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -92,13 +93,13 @@ private fun ModeRow(mode: AssistantMode, selected: Boolean, onClick: () -> Unit)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(mode.labelRes),
-                color = if (selected) Accent else Color.White,
+                color = if (selected) Accent else CameraPalette.TextPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 text = stringResource(mode.descriptionRes),
-                color = Color.White.copy(alpha = 0.5f),
+                color = CameraPalette.TextSecondary,
                 fontSize = 12.sp,
             )
         }

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.example.ai_camera.settings.LocaleSettings
+import com.example.ai_camera.ui.CameraPalette
 import com.example.ai_camera.ui.CameraScreen
 import com.example.ai_camera.ui.theme.AI_cameraTheme
 
@@ -57,7 +58,7 @@ class MainActivity : ComponentActivity() {
         )
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
-            AI_cameraTheme(darkTheme = true, dynamicColor = false) {
+            AI_cameraTheme(darkTheme = false, dynamicColor = false) {
                 CameraPermissionGate {
                     CameraScreen()
                 }
@@ -102,7 +103,7 @@ private fun CameraPermissionGate(content: @Composable () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black),
+                .background(CameraPalette.Surface),
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -111,7 +112,7 @@ private fun CameraPermissionGate(content: @Composable () -> Unit) {
             ) {
                 Text(
                     text = stringResource(R.string.permission_title),
-                    color = Color.White,
+                    color = CameraPalette.TextPrimary,
                     fontSize = 18.sp,
                     textAlign = TextAlign.Center,
                 )
@@ -122,18 +123,18 @@ private fun CameraPermissionGate(content: @Composable () -> Unit) {
                     } else {
                         stringResource(R.string.permission_rationale)
                     },
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = CameraPalette.TextSecondary,
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
                 Text(
                     text = stringResource(R.string.permission_grant),
-                    color = Color.Black,
+                    color = CameraPalette.Surface,
                     fontSize = 14.sp,
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFFD60A))
+                        .background(CameraPalette.AccentDeep)
                         .clickable { launcher.launch(requiredPermissions()) }
                         .padding(horizontal = 20.dp, vertical = 10.dp),
                 )

@@ -18,6 +18,8 @@ object CameraPalette {
 
     /** Selected pills and the accent used for the active value. */
     val Accent = Color(0xFFC8A96A)
+    /** Legible as text; the pale accent is a fill colour only. */
+    val AccentDeep = Color(0xFF8A6A2F)
     val AccentSoft = Color(0xFFEADFC6)
 
     val TextPrimary = Color(0xFF33302B)

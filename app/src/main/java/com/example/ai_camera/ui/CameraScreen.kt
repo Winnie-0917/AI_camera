@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -69,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -152,6 +154,13 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     }
     val analysisFlip = remember(specs) {
         specs?.let { PreviewOrientation.analysisFlipsVertically(it.lensFacing) } ?: false
+    }
+
+    var topChromePx by remember { mutableStateOf(0) }
+    var bottomChromePx by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
+    val framePadding = with(density) {
+        PaddingValues(top = topChromePx.toDp(), bottom = bottomChromePx.toDp())
     }
 
     var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
@@ -267,7 +276,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(CameraPalette.Cream)
+            .background(CameraPalette.Surface)
     ) {
         CameraPreview(
             contentAspect = contentAspect,
@@ -295,12 +304,13 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             onViewReady = { previewView = it },
             modifier = Modifier
                 .fillMaxSize()
+                .padding(framePadding)
                 .onSizeChanged { previewSizePx = it.width to it.height },
         )
 
         // Overlays are constrained to the letterboxed frame so the grid matches the real image.
         if (contentAspect != null) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(framePadding)) {
                 val viewAspect = maxWidth / maxHeight
                 val frameModifier = if (contentAspect > viewAspect) {
                     Modifier.fillMaxWidth()
@@ -335,6 +345,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { topChromePx = it.height }
                     .background(CameraPalette.Surface)
                     .statusBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 10.dp),
@@ -390,6 +401,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .onSizeChanged { bottomChromePx = it.height }
                     .background(CameraPalette.Surface)
                     .navigationBarsPadding()
                     .padding(vertical = 12.dp),
@@ -716,13 +728,13 @@ private fun TopChrome(
 
         Box(
             modifier = Modifier
-                .size(38.dp)
+                .size(58.dp)
                 .clip(CircleShape)
                 .background(if (assistantActive) CameraPalette.AccentSoft else Color.Transparent)
                 .combinedClickable(onClick = onAssistant, onLongClick = onAssistantLongPress),
             contentAlignment = Alignment.Center,
         ) {
-            EmotionAvatar(reply = null, classifier = remember { KeywordEmotionClassifier() }, size = 34.dp)
+            EmotionAvatar(reply = null, classifier = remember { KeywordEmotionClassifier() }, size = 54.dp)
         }
 
         Icon(

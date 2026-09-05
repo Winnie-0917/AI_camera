@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.ai_camera.ui.CameraPalette
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.example.ai_camera.R
 
-private val Accent = Color(0xFFFFD60A)
+private val Accent = CameraPalette.AccentDeep
 
 @Composable
 fun SettingsSheet(onDismiss: () -> Unit) {
@@ -47,12 +48,12 @@ fun SettingsSheet(onDismiss: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF1C1C1E))
+                .background(CameraPalette.Surface)
                 .padding(20.dp)
         ) {
             Text(
                 text = stringResource(R.string.settings_title),
-                color = Color.White,
+                color = CameraPalette.TextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -60,7 +61,7 @@ fun SettingsSheet(onDismiss: () -> Unit) {
 
             Text(
                 text = stringResource(R.string.settings_language),
-                color = Color.White.copy(alpha = 0.6f),
+                color = CameraPalette.TextSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -87,7 +88,7 @@ fun SettingsSheet(onDismiss: () -> Unit) {
             Spacer(Modifier.height(10.dp))
             Text(
                 text = stringResource(R.string.settings_language_note),
-                color = Color.White.copy(alpha = 0.45f),
+                color = CameraPalette.TextSecondary,
                 fontSize = 11.sp,
             )
 
@@ -113,7 +114,7 @@ private fun LanguageRow(label: String, selected: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) Accent.copy(alpha = 0.15f) else Color.Transparent)
+            .background(if (selected) CameraPalette.AccentSoft else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -121,7 +122,7 @@ private fun LanguageRow(label: String, selected: Boolean, onClick: () -> Unit) {
     ) {
         Text(
             text = label,
-            color = if (selected) Accent else Color.White,
+            color = if (selected) Accent else CameraPalette.TextPrimary,
             fontSize = 15.sp,
         )
         if (selected) {

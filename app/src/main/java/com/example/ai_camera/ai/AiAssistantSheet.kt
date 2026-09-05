@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.example.ai_camera.ui.CameraPalette
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -62,8 +63,8 @@ import com.example.ai_camera.emotion.BertEmotionClassifier
 import com.example.ai_camera.camera.CaptureSettings
 import kotlinx.coroutines.launch
 
-private val Accent = Color(0xFFFFD60A)
-private val Panel = Color(0xFF1C1C1E)
+private val Accent = CameraPalette.AccentDeep
+private val Panel = CameraPalette.Surface
 
 /**
  * @param cameraContext a short description of the current camera state, sent with every prompt.
@@ -146,7 +147,7 @@ fun AiAssistantSheet(
                     Spacer(Modifier.width(10.dp))
                     Text(
                         text = stringResource(R.string.ai_title),
-                        color = Color.White,
+                        color = CameraPalette.TextPrimary,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -169,7 +170,7 @@ fun AiAssistantSheet(
                 if (messages.isEmpty()) {
                     Text(
                         text = stringResource(R.string.ai_empty),
-                        color = Color.White.copy(alpha = 0.45f),
+                        color = CameraPalette.TextSecondary,
                         fontSize = 13.sp,
                         modifier = Modifier.align(Alignment.Center).padding(24.dp),
                     )
@@ -206,7 +207,7 @@ fun AiAssistantSheet(
             error?.let { text ->
                 Text(
                     text = text,
-                    color = Color(0xFFFF6B6B),
+                    color = CameraPalette.Danger,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(vertical = 6.dp),
                 )
@@ -232,7 +233,7 @@ fun AiAssistantSheet(
                     placeholder = {
                         Text(
                             stringResource(R.string.ai_hint),
-                            color = Color.White.copy(alpha = 0.4f),
+                            color = CameraPalette.TextSecondary,
                             fontSize = 13.sp,
                         )
                     },
@@ -242,10 +243,10 @@ fun AiAssistantSheet(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { send() }),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Accent.copy(alpha = 0.6f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
+                        focusedTextColor = CameraPalette.TextPrimary,
+                        unfocusedTextColor = CameraPalette.TextPrimary,
+                        focusedBorderColor = CameraPalette.Accent,
+                        unfocusedBorderColor = CameraPalette.Divider,
                         cursorColor = Accent,
                     ),
                 )
@@ -261,7 +262,7 @@ fun AiAssistantSheet(
                         Icon(
                             imageVector = Icons.Default.Send,
                             contentDescription = stringResource(R.string.ai_send),
-                            tint = if (input.isBlank()) Color.White.copy(alpha = 0.3f) else Accent,
+                            tint = if (input.isBlank()) CameraPalette.TextSecondary else Accent,
                         )
                     }
                 }
@@ -285,7 +286,7 @@ private fun SuggestionCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Accent.copy(alpha = 0.12f))
+            .background(CameraPalette.AccentSoft)
             .padding(12.dp),
     ) {
         Text(
@@ -300,12 +301,12 @@ private fun SuggestionCard(
             suggestion.describe().forEach { item ->
                 Text(
                     text = item,
-                    color = Color.White,
+                    color = CameraPalette.TextPrimary,
                     fontSize = 12.sp,
                     modifier = Modifier
                         .padding(bottom = 6.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White.copy(alpha = 0.12f))
+                        .background(CameraPalette.Surface)
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 )
             }
@@ -314,13 +315,13 @@ private fun SuggestionCard(
         Spacer(Modifier.height(4.dp))
         Text(
             text = stringResource(if (isApplied) R.string.ai_revert else R.string.ai_apply),
-            color = if (isApplied) Accent else Color.Black,
+            color = if (isApplied) Accent else CameraPalette.Surface,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .align(Alignment.End)
                 .clip(RoundedCornerShape(8.dp))
-                .background(if (isApplied) Color.White.copy(alpha = 0.12f) else Accent)
+                .background(if (isApplied) CameraPalette.Surface else Accent)
                 .clickable(enabled = enabled) { if (isApplied) onRevert() else onApply() }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         )
@@ -345,13 +346,13 @@ private fun MessageBubble(message: ChatMessage) {
     ) {
         Text(
             text = message.text,
-            color = if (message.fromUser) Color.Black else Color.White,
+            color = if (message.fromUser) CameraPalette.Surface else CameraPalette.TextPrimary,
             fontSize = 14.sp,
             modifier = Modifier
                 .widthIn(max = 300.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(
-                    if (message.fromUser) Accent else Color.White.copy(alpha = 0.1f)
+                    if (message.fromUser) Accent else CameraPalette.CreamDim
                 )
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         )
