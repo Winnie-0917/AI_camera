@@ -255,17 +255,21 @@ app/src/main/assets/emotion/
 
 ## 第三方服務、資料與素材
 
-主要服務、技術與素材來源如下，授權資訊依各元件隨附文件整理。
+主要第三方元件與授權揭露如下；詳細版本、證據及待確認事項收錄於第三方授權清單。
 
-| 項目 | 來源／連結 | 使用方式與授權狀態 |
-| --- | --- | --- |
-| Gemini API | [Google AI Studio](https://aistudio.google.com/apikey) | 雲端 AI 服務；依服務條款與帳號配額使用 |
-| Android、AndroidX、Jetpack Compose | [Android 開發文件](https://developer.android.com/) | 相機、介面與儲存相關元件；依各元件隨附授權 |
-| Kotlin、Kotlin Coroutines | [Kotlin](https://kotlinlang.org/) | 程式語言與非同步處理；依各元件隨附授權 |
-| ONNX Runtime | [原始碼儲存庫](https://github.com/microsoft/onnxruntime) | 裝置端推論；依所用版本隨附授權 |
-| Coil | [原始碼儲存庫](https://github.com/coil-kt/coil) | 圖片與 GIF 載入；依所用版本隨附授權 |
-| 中文 BERT 情緒模型與詞彙表 | 由 AI 生成；存放於 `app/src/main/assets/emotion/`（目前僅含詞彙表） | 用於裝置端情緒分類；生成工具與授權資訊待補充 |
-| Mochi GIF、角色圖與 App 圖示 | 由 AI 生成；存放於 `app/src/main/assets/icon_gif/`、`app/src/main/res/` | 用於角色表情、助理形象與 App 識別；生成工具與授權資訊待補充 |
+| 項目類型 | 主要項目與用途 | 來源 | License／Attribution |
+| --- | --- | --- | --- |
+| Software / Libraries | AndroidX／Compose、Kotlin、Coroutines、Coil、Gradle；介面與建置 | 官方 Maven metadata／上游 Repository，見詳細清單 | Apache-2.0；保留授權、Copyright 與適用 NOTICE |
+| Software / Libraries | ONNX Runtime；裝置端推論 | [Microsoft ONNX Runtime](https://github.com/microsoft/onnxruntime/tree/v1.20.0) | MIT；保留 Copyright 與許可聲明，原生子元件另行查核 |
+| Software / Libraries | JUnit／Hamcrest；測試 | [JUnit](https://github.com/junit-team/junit4/tree/r4.13.2)、官方 Hamcrest 發行檔 | EPL-1.0／BSD-3-Clause；保留聲明並遵循各自散布要求 |
+| Datasets | 專案使用的拍攝資料 | 團隊自行拍攝 | MIT；保留 Copyright 與許可聲明 |
+| Fonts / Icons | Material Icons／系統預設字型 | [Google Material Icons](https://github.com/google/material-design-icons)、Android 裝置 | 圖示 Apache-2.0；未散布字型檔 |
+| Images / Media | Mochi GIF、角色圖、App 圖示 | 由團隊使用 AI 製作 | MIT（團隊授權）；保留 Copyright 與許可聲明 |
+| External Services | Gemini API（雲端 AI 模型服務）；攝影問答、風格建議、構圖與姿勢分析 | [Gemini 官方條款](https://ai.google.dev/gemini-api/terms) | 自訂服務條款；依服務與回傳內容要求標示來源 |
+
+團隊自行拍攝的資料與 AI 製作素材依團隊聲明採用 MIT；第三方元件保留各自授權。BERT 選用整合與隨附詞彙表的來源及授權詳見下方清單。
+
+For detailed third-party licensing information, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## 團隊成員
 
@@ -279,4 +283,4 @@ app/src/main/assets/emotion/
 
 ## License
 
-無
+本專案原創程式碼、文件、團隊自行拍攝的資料及團隊 AI 製作素材採用 [MIT License](LICENSE)。第三方元件依各自授權或服務條款使用，詳見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
