@@ -80,6 +80,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import android.hardware.camera2.CameraCharacteristics
 import com.example.ai_camera.R
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.SystemClock
 import android.util.Log
 import android.view.TextureView
@@ -135,6 +136,12 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         }
     }
 
+    // Preview buffers arrive oriented for a 90-degree sensor. A front lens typically reports 270,
+    // which is that upside down.
+    val previewRotation = remember(specs) {
+        specs?.let { ((it.sensorOrientation - 90 + 360) % 360) } ?: 0
+    }
+
     var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
     var previewSizePx by remember { mutableStateOf(0 to 0) }
     var showSettings by remember { mutableStateOf(false) }
@@ -162,7 +169,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         var window = emptyList<AngleAdvice>()
         while (isActive) {
             val startedAt = SystemClock.elapsedRealtime()
-            val jpeg = previewView?.let { grabPreviewJpeg(it) }
+            val jpeg = previewView?.let { grabPreviewJpeg(it, previewRotation) }
             if (jpeg != null) {
                 try {
                     val advice = GeminiClient.analyzeAngle(
@@ -214,10 +221,17 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     ) {
         CameraPreview(
             contentAspect = contentAspect,
+            previewRotation = previewRotation,
             onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
             onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
             onTapFocus = { nx, ny ->
-                viewModel.tapToFocus(nx, ny)
+                // The tap is in displayed coordinates; undo the preview rotation before mapping
+                // it back to the sensor, or a tap on a rotated preview focuses the opposite spot.
+                if (previewRotation == 180) {
+                    viewModel.tapToFocus(1f - nx, 1f - ny)
+                } else {
+                    viewModel.tapToFocus(nx, ny)
+                }
                 val (w, h) = previewSizePx
                 if (w > 0 && h > 0 && contentAspect != null) {
                     focusRingPosition = frameOffsetToView(nx, ny, contentAspect, w, h)
@@ -532,7 +546,11 @@ private fun TopBar(
  * Snapshots the viewfinder for the angle guide. Downscaled hard: the model only needs to judge
  * framing, and a small frame keeps upload latency and token cost down on a repeating timer.
  */
-private suspend fun grabPreviewJpeg(view: TextureView, maxEdge: Int = 640): ByteArray? {
+private suspend fun grabPreviewJpeg(
+    view: TextureView,
+    rotationDegrees: Int,
+    maxEdge: Int = 640,
+): ByteArray? {
     // getBitmap must run on the UI thread; JPEG encoding is pushed off it.
     val bitmap = withContext(Dispatchers.Main) {
         if (view.width <= 0 || view.height <= 0 || !view.isAvailable) return@withContext null
@@ -543,9 +561,19 @@ private suspend fun grabPreviewJpeg(view: TextureView, maxEdge: Int = 640): Byte
     } ?: return null
 
     return withContext(Dispatchers.IO) {
+        // getBitmap returns the raw surface texture and ignores the view's transform, so the
+        // preview rotation has to be reapplied here - otherwise the model judges a front-camera
+        // frame upside down and every up/down call comes back inverted.
+        val oriented = if (rotationDegrees != 0) {
+            val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                .also { if (it !== bitmap) bitmap.recycle() }
+        } else {
+            bitmap
+        }
         val out = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
-        bitmap.recycle()
+        oriented.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        oriented.recycle()
         out.toByteArray()
     }
 }

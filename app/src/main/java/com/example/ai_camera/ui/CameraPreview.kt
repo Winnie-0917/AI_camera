@@ -27,6 +27,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 @Composable
 fun CameraPreview(
     contentAspect: Float?,
+    /**
+     * Extra rotation the displayed frame needs, in degrees. Front sensors usually report 270
+     * where back sensors report 90, and the buffer arrives oriented for the latter, so a front
+     * preview comes out upside down without this.
+     */
+    previewRotation: Int,
     onSurfaceAvailable: (SurfaceTexture) -> Unit,
     onSurfaceDestroyed: () -> Unit,
     onTapFocus: (Float, Float) -> Unit,
@@ -72,7 +78,13 @@ fun CameraPreview(
             },
             update = { view ->
                 if (contentAspect != null && view.width > 0 && view.height > 0) {
-                    applyLetterboxTransform(view, contentAspect, view.width, view.height)
+                    applyLetterboxTransform(
+                        view,
+                        contentAspect,
+                        view.width,
+                        view.height,
+                        previewRotation,
+                    )
                 }
             },
         )
@@ -124,6 +136,7 @@ private fun applyLetterboxTransform(
     contentAspect: Float,
     viewWidth: Int,
     viewHeight: Int,
+    rotationDegrees: Int,
 ) {
     if (viewWidth <= 0 || viewHeight <= 0 || contentAspect <= 0f) return
     val viewAspect = viewWidth.toFloat() / viewHeight
@@ -134,6 +147,12 @@ private fun applyLetterboxTransform(
         matrix.setScale(1f, viewAspect / contentAspect, centerX, centerY)
     } else {
         matrix.setScale(contentAspect / viewAspect, 1f, centerX, centerY)
+    }
+    // Only 180 is applied: it leaves the frame's aspect alone, so the letterboxing above still
+    // holds. A 90/270 correction would also have to swap the aspect, and no device here reports
+    // one, so it is left unhandled rather than written blind.
+    if (rotationDegrees == 180) {
+        matrix.postRotate(180f, centerX, centerY)
     }
     view.setTransform(matrix)
 }
