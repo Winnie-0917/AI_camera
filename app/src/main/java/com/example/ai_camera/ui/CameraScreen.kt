@@ -25,9 +25,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -161,12 +158,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     val analysisFlip = remember(specs) {
         specs?.let { PreviewOrientation.analysisFlipsVertically(it.lensFacing) } ?: false
     }
-
-    // Measured out here: a dialog window reports no insets of its own, so the style sheet cannot
-    // work out how much room it really has once the system bars are taken off.
-    val systemBars = WindowInsets.systemBars.asPaddingValues()
-    val styleSheetHeight = LocalConfiguration.current.screenHeightDp.dp -
-        systemBars.calculateTopPadding() - systemBars.calculateBottomPadding()
 
     var showTools by remember { mutableStateOf(false) }
     var showStyle by remember { mutableStateOf(false) }
@@ -527,7 +518,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             StyleSheet(
                 current = state.settings.style,
                 strength = state.settings.styleStrength,
-                availableHeight = styleSheetHeight,
                 onSelect = { style -> viewModel.updateSettings { it.copy(style = style) } },
                 onStrengthChange = { value ->
                     viewModel.updateSettings { it.copy(styleStrength = value) }
