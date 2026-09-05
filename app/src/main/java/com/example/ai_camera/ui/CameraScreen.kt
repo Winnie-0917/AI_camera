@@ -305,11 +305,12 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 .padding(framePadding)
                 .clipToBounds(),
         ) {
+            val frameHeight = contentAspect?.let { maxWidth / it } ?: maxHeight
             val frame = Modifier
                 .width(maxWidth)
                 // Required, not preferred: a window shorter than the frame has to crop it rather
                 // than squeeze it back into view.
-                .requiredHeight(contentAspect?.let { maxWidth / it } ?: maxHeight)
+                .requiredHeight(frameHeight)
                 .align(Alignment.TopCenter)
 
             CameraPreview(
@@ -340,6 +341,25 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 onViewReady = { previewView = it },
                 modifier = frame.onSizeChanged { previewSizePx = it.width to it.height },
             )
+
+            // Along the bottom edge of the picture as it is actually seen - the frame where pro
+            // mode has cropped it, the window otherwise. Sitting at the bottom of the window put
+            // the pills on the strip of cream that shows below the frame in simple mode.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .requiredHeight(minOf(frameHeight, maxHeight))
+                    .align(Alignment.TopCenter),
+            ) {
+                ZoomPills(
+                    current = state.settings.zoomRatio,
+                    maxZoom = specs?.maxDigitalZoom ?: 1f,
+                    onSelect = { ratio -> viewModel.updateSettings { it.copy(zoomRatio = ratio) } },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 14.dp),
+                )
+            }
 
             // The same geometry as the frame, so the grid lines land on the real image.
             Box(modifier = frame) {
@@ -408,15 +428,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 )
                 Spacer(Modifier.weight(1f))
             }
-
-            ZoomPills(
-                current = state.settings.zoomRatio,
-                maxZoom = specs?.maxDigitalZoom ?: 1f,
-                onSelect = { ratio -> viewModel.updateSettings { it.copy(zoomRatio = ratio) } },
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 26.dp),
-            )
 
             Column(
                 modifier = Modifier
