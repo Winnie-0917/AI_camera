@@ -96,6 +96,7 @@ import com.example.ai_camera.ai.StyleSuggestion
 import com.example.ai_camera.settings.SettingsSheet
 import com.example.ai_camera.camera.AspectRatioOption
 import com.example.ai_camera.camera.FocusMode
+import com.example.ai_camera.camera.PreviewOrientation
 import com.example.ai_camera.camera.WbPreset
 import com.example.ai_camera.camera.CaptureSettings
 import com.example.ai_camera.camera.ExposureMode
@@ -136,10 +137,8 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         }
     }
 
-    // Preview buffers arrive oriented for a 90-degree sensor. A front lens typically reports 270,
-    // which is that upside down.
     val previewRotation = remember(specs) {
-        specs?.let { ((it.sensorOrientation - 90 + 360) % 360) } ?: 0
+        specs?.let { PreviewOrientation.rotationFor(it.lensFacing) } ?: 0
     }
 
     var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
