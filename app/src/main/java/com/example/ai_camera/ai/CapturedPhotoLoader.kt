@@ -22,6 +22,23 @@ object CapturedPhotoLoader {
     private const val MAX_EDGE = 1024
     private const val QUALITY = 85
 
+    /**
+     * A small copy of what was sent, for the chat bubble. Decoded from the same bytes the model
+     * receives so the two can never disagree, and kept small because a transcript may hold several.
+     */
+    suspend fun thumbnail(jpeg: ByteArray, maxEdge: Int = 512): Bitmap? = withContext(Dispatchers.IO) {
+        runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, bounds)
+            val longest = maxOf(bounds.outWidth, bounds.outHeight)
+            if (longest <= 0) return@runCatching null
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = generateSequence(1) { it * 2 }.first { longest / it <= maxEdge }
+            }
+            BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, options)
+        }.getOrNull()
+    }
+
     suspend fun load(context: Context, uri: Uri): ByteArray? = withContext(Dispatchers.IO) {
         runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

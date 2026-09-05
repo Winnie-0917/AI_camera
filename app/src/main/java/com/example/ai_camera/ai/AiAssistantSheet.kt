@@ -45,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import com.example.ai_camera.ui.CameraPalette
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
@@ -344,17 +346,32 @@ private fun MessageBubble(message: ChatMessage) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.fromUser) Arrangement.End else Arrangement.Start,
     ) {
-        Text(
-            text = message.text,
-            color = if (message.fromUser) CameraPalette.Surface else CameraPalette.TextPrimary,
-            fontSize = 14.sp,
-            modifier = Modifier
-                .widthIn(max = 300.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    if (message.fromUser) Accent else CameraPalette.CreamDim
+        Column(horizontalAlignment = if (message.fromUser) Alignment.End else Alignment.Start) {
+            message.image?.let { photo ->
+                Image(
+                    bitmap = photo.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .widthIn(max = 220.dp)
+                        .clip(RoundedCornerShape(12.dp)),
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        )
+            }
+            if (message.text.isNotBlank()) {
+                if (message.image != null) Spacer(Modifier.height(4.dp))
+                Text(
+                    text = message.text,
+                    color = if (message.fromUser) CameraPalette.Surface else CameraPalette.TextPrimary,
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .widthIn(max = 300.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (message.fromUser) Accent else CameraPalette.CreamDim
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                )
+            }
+        }
     }
 }

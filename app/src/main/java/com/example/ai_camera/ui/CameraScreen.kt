@@ -170,7 +170,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 
     var showTools by remember { mutableStateOf(false) }
     var showStyle by remember { mutableStateOf(false) }
-    var styleThumb by remember { mutableStateOf<Bitmap?>(null) }
 
     var topChromePx by remember { mutableStateOf(0) }
     var bottomChromePx by remember { mutableStateOf(0) }
@@ -260,15 +259,24 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         reviewedUri = uri
         showAssistant = true
 
+        // The photo goes into the transcript as something the user handed over, before any reply
+        // arrives - the conversation then reads the way sharing a picture with someone does,
+        // rather than the assistant commenting on a photo that is nowhere to be seen.
+        val jpeg = CapturedPhotoLoader.load(context, uri)
+        if (jpeg == null) {
+            assistantMessages += ChatMessage(fromUser = false, text = poseUnreadable)
+            return@LaunchedEffect
+        }
+        assistantMessages += ChatMessage(
+            fromUser = true,
+            text = "",
+            image = CapturedPhotoLoader.thumbnail(jpeg),
+        )
+
         val placeholder = ChatMessage(fromUser = false, text = poseAnalyzing)
         assistantMessages += placeholder
         val reply = try {
-            val jpeg = CapturedPhotoLoader.load(context, uri)
-            if (jpeg == null) {
-                ChatMessage(fromUser = false, text = poseUnreadable)
-            } else {
-                GeminiClient.analyzePose(jpeg, languageTag, cameraContextOf(state))
-            }
+            GeminiClient.analyzePose(jpeg, languageTag, cameraContextOf(state))
         } catch (e: Exception) {
             val message = if (e is GeminiException && e.message == "MISSING_KEY") {
                 missingKeyMessage
@@ -453,12 +461,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     StyleButton(
                         active = state.settings.style != PhotoStyle.NATURAL,
                         label = stringResource(state.settings.style.labelRes),
-                        onClick = {
-                            // Snapshotting here, not inside the sheet, keeps the tiles showing the
-                            // scene as it was framed rather than a black frame mid-transition.
-                            styleThumb = previewView?.let { grabPreviewBitmap(it, mirrorPreview) }
-                            showStyle = true
-                        },
+                        onClick = { showStyle = true },
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .padding(start = 24.dp),
@@ -524,7 +527,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             StyleSheet(
                 current = state.settings.style,
                 strength = state.settings.styleStrength,
-                preview = styleThumb,
                 availableHeight = styleSheetHeight,
                 onSelect = { style -> viewModel.updateSettings { it.copy(style = style) } },
                 onStrengthChange = { value ->
@@ -721,21 +723,6 @@ private fun TopBar(
             )
         }
     }
-}
-
-/** A small, correctly-oriented frame for the style tiles. */
-private fun grabPreviewBitmap(view: TextureView, mirror: Boolean, maxEdge: Int = 420): Bitmap? {
-    if (view.width <= 0 || view.height <= 0 || !view.isAvailable) return null
-    val scale = maxEdge.toFloat() / maxOf(view.width, view.height)
-    val w = if (scale < 1f) (view.width * scale).toInt() else view.width
-    val h = if (scale < 1f) (view.height * scale).toInt() else view.height
-    // getBitmap hands back the raw surface texture and ignores the view transform, so a selfie
-    // comes back unmirrored and the tiles would not match the viewfinder beside them.
-    val raw = runCatching { view.getBitmap(w, h) }.getOrNull() ?: return null
-    if (!mirror) return raw
-    val matrix = Matrix().apply { postScale(-1f, 1f) }
-    return Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, matrix, true)
-        .also { if (it !== raw) raw.recycle() }
 }
 
 /** The current look, named on the button so it reads without opening the picker. */

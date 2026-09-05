@@ -2,6 +2,7 @@ package com.example.ai_camera.ai
 
 import android.util.Base64
 import com.example.ai_camera.BuildConfig
+import android.graphics.Bitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -14,6 +15,8 @@ data class ChatMessage(
     val fromUser: Boolean,
     val text: String,
     val suggestion: StyleSuggestion? = null,
+    /** Shown in the bubble when the message is a photo the user handed over. */
+    val image: Bitmap? = null,
 )
 
 class GeminiException(message: String) : Exception(message)
@@ -71,6 +74,13 @@ object GeminiClient {
                 "contents",
                 JSONArray().apply {
                     history.forEach { message ->
+                        // A photo message carries no words of its own, but the model still has to
+                        // know one was shared or a follow-up like "is the left one better" makes
+                        // no sense to it.
+                        val said = message.text.ifBlank {
+                            if (message.image != null) "(shared a photo)" else ""
+                        }
+                        if (said.isBlank()) return@forEach
                         // Replay any settings the assistant proposed alongside its words, so a
                         // follow-up like "go ahead, adjust it" knows what it offered.
                         val proposed = message.suggestion
@@ -82,7 +92,7 @@ object GeminiClient {
                                 .put(
                                     "parts",
                                     JSONArray().put(
-                                        JSONObject().put("text", message.text + proposed),
+                                        JSONObject().put("text", said + proposed),
                                     ),
                                 ),
                         )

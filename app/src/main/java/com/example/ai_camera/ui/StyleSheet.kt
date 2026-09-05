@@ -1,6 +1,6 @@
 package com.example.ai_camera.ui
 
-import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,8 +33,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -46,19 +48,13 @@ import com.example.ai_camera.R
 import com.example.ai_camera.camera.PhotoStyle
 
 /**
- * The style picker.
- *
- * Every tile is the viewfinder as it looks right now with that grade applied, rather than a canned
- * sample image - the point of choosing a look is seeing it on the scene in front of you. The
- * snapshot is taken once when the sheet opens; a live feed in six tiles would cost six more
- * streams for no real gain.
+ * The style picker. Every tile is the mascot with that grade applied, so the six looks are told
+ * apart by the same subject rather than by whatever the camera happened to be pointing at.
  */
 @Composable
 fun StyleSheet(
     current: PhotoStyle,
     strength: Int,
-    /** A frame grabbed from the viewfinder, already oriented the way the user sees it. */
-    preview: Bitmap?,
     /**
      * How tall the sheet may be. Passed in because a dialog window here is positioned inside the
      * system bars yet still reports the whole screen as its height, and reports no insets of its
@@ -74,6 +70,8 @@ fun StyleSheet(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
+        val demo = rememberDemoImage()
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -115,7 +113,7 @@ fun StyleSheet(
                 items(PhotoStyle.entries) { style ->
                     StyleTile(
                         style = style,
-                        preview = preview,
+                        demo = demo,
                         // The tile shows the look at the strength it would actually be applied.
                         strength = strength,
                         selected = style == current,
@@ -180,15 +178,27 @@ fun StyleSheet(
     }
 }
 
+/** Decoded once and held for the life of the composition; it is a 480px JPEG in assets. */
+@Composable
+private fun rememberDemoImage(): ImageBitmap? {
+    val context = LocalContext.current
+    return remember(context) {
+        runCatching {
+            context.assets.open(DEMO_ASSET).use { BitmapFactory.decodeStream(it) }?.asImageBitmap()
+        }.getOrNull()
+    }
+}
+
+private const val DEMO_ASSET = "Filter_icon.jpg"
+
 @Composable
 private fun StyleTile(
     style: PhotoStyle,
-    preview: Bitmap?,
+    demo: ImageBitmap?,
     strength: Int,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val image = remember(preview) { preview?.asImageBitmap() }
     val filter = remember(style, strength) {
         if (style.isNoOp(strength)) null
         else ColorFilter.colorMatrix(ColorMatrix(style.matrixFor(strength)))
@@ -213,11 +223,11 @@ private fun StyleTile(
                 .clip(RoundedCornerShape(11.dp))
                 .background(CameraPalette.Cream),
         ) {
-            if (image != null) {
+            if (demo != null) {
                 Image(
-                    bitmap = image,
+                    bitmap = demo,
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     colorFilter = filter,
                     modifier = Modifier.fillMaxSize(),
                 )
