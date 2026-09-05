@@ -156,6 +156,42 @@ capped at 2 min) so a rate-limited or offline API is not polled on the normal ca
 which together with JSON mode pushed responses past a 60s timeout. Pro models require a budget of
 at least 128, so they are left alone.
 
+## Emotion avatar
+
+The assistant's face is an animated GIF that reacts to what it just said. The reply is cut into
+chunks at punctuation — but only once a chunk exceeds five characters, since splitting at every
+mark yields fragments like "好的" that carry no emotion and make the face flicker. Each chunk is
+classified and the matching GIF plays; `6.gif` is the idle face.
+
+Classification runs **on device** using the fine-tuned Chinese BERT in `emotion_model/`, exported
+to int8 ONNX (~103MB) and run through ONNX Runtime. Roughly 70ms per sentence after a ~1.3s first
+load.
+
+### Rebuilding the model
+
+The export is git-ignored: at 103MB it exceeds GitHub's 100MB file limit, and it is reproducible
+from the checkpoint.
+
+```bash
+python emotion_model/export_onnx.py    # writes emotion_model/export/emotion_int8.onnx
+cp emotion_model/export/emotion_int8.onnx app/src/main/assets/emotion/
+cp emotion_model/export/vocab.txt        app/src/main/assets/emotion/
+```
+
+Two things that are easy to get wrong here:
+
+- **Quantise per-channel.** Default per-tensor dynamic quantisation collapses this model's
+  predictions toward 中性: 95.3% agreement with fp32 against 100% for per-channel, at the same
+  file size. `emotion_model/eval_quant.py` measures this.
+- **ONNX Runtime, not TFLite.** transformers 5 removed TensorFlow, so there is no first-party path
+  from this checkpoint to `.tflite`; the remaining ONNX→TF converters add a second lossy hop for
+  nothing.
+
+The tokenizer is reimplemented in Kotlin (`WordPieceTokenizer`) because HuggingFace's is
+Python-only. `WordPieceTokenizerTest` asserts token-id parity against the real tokenizer — a
+mismatch there feeds the model text it was never trained on and shows up as confident nonsense
+rather than an error.
+
 ## Project layout
 
 ```

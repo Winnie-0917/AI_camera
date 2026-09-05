@@ -24,3 +24,8 @@ local.properties
 # JVM crash dumps
 hs_err_pid*.log
 replay_pid*.log
+
+# Generated model artefacts - the int8 export is 103MB, over GitHub's 100MB file limit.
+# Rebuild with: python emotion_model/export_onnx.py
+/emotion_model/export/
+/app/src/main/assets/emotion/emotion_int8.onnx

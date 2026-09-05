@@ -6,13 +6,13 @@ package com.example.ai_camera.emotion
  * being said.
  */
 enum class Emotion(val id: Int) {
-    HAPPY(0),
-    AFRAID(1),
-    ANGRY(2),
-    SAD(3),
-    CURIOUS(4),
-    SURPRISED(5),
-    NEUTRAL(6);
+    HAPPY(0),      // 開心
+    AFRAID(1),     // 害怕
+    ANGRY(2),      // 生氣
+    SAD(3),        // 失落
+    CURIOUS(4),    // 好奇
+    PLAYFUL(5),   // 戲謔
+    NEUTRAL(6);   // 中性
 
     /** Assets are named by label id: `icon_gif/0.gif` … `icon_gif/6.gif`. */
     val assetPath: String get() = "file:///android_asset/icon_gif/$id.gif"
@@ -61,8 +61,8 @@ class KeywordEmotionClassifier : EmotionClassifier {
         Emotion.CURIOUS to listOf(
             "試試", "建議", "可以", "或許", "想", "？", "?", "try", "maybe", "suggest",
         ),
-        Emotion.SURPRISED to listOf(
-            "哇", "居然", "竟然", "驚", "wow", "amazing",
+        Emotion.PLAYFUL to listOf(
+            "哈", "嘿", "開玩笑", "有趣", "好玩", "haha", "fun",
         ),
     )
 

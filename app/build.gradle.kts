@@ -28,6 +28,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
+        ndk {
+            // ONNX Runtime ships a native library per ABI and all four together are ~74MB. Real
+            // devices are arm64; x86_64 is kept only so the emulator can still run this.
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
+
         buildConfigField("String", "GEMINI_API_KEY", "\"${envOrEmpty("GEMINI_API_KEY")}\"")
         buildConfigField(
             "String",
@@ -52,6 +58,12 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+    androidResources {
+        // The quantized model is already compressed; zipping it again only slows the build and
+        // the first-run copy out of assets.
+        noCompress += "onnx"
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -74,6 +86,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
+    implementation(libs.onnxruntime.android)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)

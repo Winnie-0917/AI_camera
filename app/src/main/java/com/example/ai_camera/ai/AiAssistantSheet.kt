@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -57,7 +58,7 @@ import com.example.ai_camera.R
 import com.example.ai_camera.camera.CameraSpecs
 import com.example.ai_camera.emotion.EmotionAvatar
 import com.example.ai_camera.emotion.EmotionClassifier
-import com.example.ai_camera.emotion.KeywordEmotionClassifier
+import com.example.ai_camera.emotion.BertEmotionClassifier
 import com.example.ai_camera.camera.CaptureSettings
 import kotlinx.coroutines.launch
 
@@ -86,8 +87,9 @@ fun AiAssistantSheet(
     val listState = rememberLazyListState()
     val missingKeyMessage = stringResource(R.string.ai_no_key)
     val revertedMessage = stringResource(R.string.ai_reverted)
-    // Swapped for the TFLite-converted BERT model once that lands.
-    val emotionClassifier: EmotionClassifier = remember { KeywordEmotionClassifier() }
+    val context = LocalContext.current
+    // Falls back to keywords on its own if the model cannot be loaded.
+    val emotionClassifier: EmotionClassifier = remember(context) { BertEmotionClassifier(context) }
 
     fun send() {
         val prompt = input.trim()
