@@ -147,7 +147,7 @@ fun AiAssistantSheet(
                     Text(
                         text = stringResource(R.string.ai_title),
                         color = Color.White,
-                        fontSize = 17.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }

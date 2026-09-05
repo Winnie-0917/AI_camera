@@ -41,7 +41,7 @@ fun EmotionAvatar(
     reply: String?,
     classifier: EmotionClassifier,
     modifier: Modifier = Modifier,
-    size: Dp = 48.dp,
+    size: Dp = 64.dp,
 ) {
     var emotion by remember { mutableStateOf(Emotion.IDLE) }
 
