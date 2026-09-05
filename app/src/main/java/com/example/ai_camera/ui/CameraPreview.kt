@@ -28,13 +28,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 fun CameraPreview(
     contentAspect: Float?,
     /**
-     * Extra rotation the displayed frame needs, in degrees. Front sensors usually report 270
-     * where back sensors report 90, and the buffer arrives oriented for the latter, so a front
-     * preview comes out upside down without this.
+     * Extra rotation for the displayed frame. See PreviewOrientation for why a front preview
+     * needs a half turn and why that also gives the mirrored selfie view.
      */
     previewRotation: Int,
-    /** Mirror the displayed frame horizontally, the selfie convention for a front lens. */
-    mirrorPreview: Boolean,
     onSurfaceAvailable: (SurfaceTexture) -> Unit,
     onSurfaceDestroyed: () -> Unit,
     onTapFocus: (Float, Float) -> Unit,
@@ -86,7 +83,6 @@ fun CameraPreview(
                         view.width,
                         view.height,
                         previewRotation,
-                        mirrorPreview,
                     )
                 }
             },
@@ -140,7 +136,6 @@ private fun applyLetterboxTransform(
     viewWidth: Int,
     viewHeight: Int,
     rotationDegrees: Int,
-    mirror: Boolean,
 ) {
     if (viewWidth <= 0 || viewHeight <= 0 || contentAspect <= 0f) return
     val viewAspect = viewWidth.toFloat() / viewHeight
@@ -155,9 +150,6 @@ private fun applyLetterboxTransform(
     // Only 180 is applied: it leaves the frame's aspect alone, so the letterboxing above still
     // holds. A 90/270 correction would also have to swap the aspect, and no device here reports
     // one, so it is left unhandled rather than written blind.
-    if (mirror) {
-        matrix.postScale(-1f, 1f, centerX, centerY)
-    }
     if (rotationDegrees == 180) {
         matrix.postRotate(180f, centerX, centerY)
     }

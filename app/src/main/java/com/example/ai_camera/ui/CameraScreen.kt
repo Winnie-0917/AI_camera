@@ -138,10 +138,10 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     }
 
     val previewRotation = remember(specs) {
-        specs?.let { PreviewOrientation.rotationFor(it.lensFacing) } ?: 0
+        specs?.let { PreviewOrientation.displayRotationFor(it.lensFacing) } ?: 0
     }
-    val mirrorPreview = remember(specs) {
-        specs?.let { PreviewOrientation.isMirrored(it.lensFacing) } ?: false
+    val analysisFlip = remember(specs) {
+        specs?.let { PreviewOrientation.analysisFlipsVertically(it.lensFacing) } ?: false
     }
 
     var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
@@ -171,7 +171,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         var window = emptyList<AngleAdvice>()
         while (isActive) {
             val startedAt = SystemClock.elapsedRealtime()
-            val jpeg = previewView?.let { grabPreviewJpeg(it, previewRotation) }
+            val jpeg = previewView?.let { grabPreviewJpeg(it, analysisFlip) }
             if (jpeg != null) {
                 try {
                     val advice = GeminiClient.analyzeAngle(
@@ -224,7 +224,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         CameraPreview(
             contentAspect = contentAspect,
             previewRotation = previewRotation,
-            mirrorPreview = mirrorPreview,
             onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
             onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
             onTapFocus = { nx, ny ->
@@ -549,7 +548,7 @@ private fun TopBar(
  */
 private suspend fun grabPreviewJpeg(
     view: TextureView,
-    rotationDegrees: Int,
+    flipVertically: Boolean,
     maxEdge: Int = 640,
 ): ByteArray? {
     // getBitmap must run on the UI thread; JPEG encoding is pushed off it.
@@ -563,10 +562,11 @@ private suspend fun grabPreviewJpeg(
 
     return withContext(Dispatchers.IO) {
         // getBitmap returns the raw surface texture and ignores the view's transform, so the
-        // preview rotation has to be reapplied here - otherwise the model judges a front-camera
-        // frame upside down and every up/down call comes back inverted.
-        val oriented = if (rotationDegrees != 0) {
-            val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        // correction has to be reapplied here - otherwise the model judges a front-camera frame
+        // upside down and every up/down call comes back inverted. This undoes the buffer's
+        // vertical flip without the mirror the display adds, so the model sees the true view.
+        val oriented = if (flipVertically) {
+            val matrix = Matrix().apply { postScale(1f, -1f) }
             Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
                 .also { if (it !== bitmap) bitmap.recycle() }
         } else {
