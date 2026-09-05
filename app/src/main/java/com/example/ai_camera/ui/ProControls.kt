@@ -114,14 +114,16 @@ private fun ParameterChip(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) Accent.copy(alpha = 0.22f) else PanelBackground)
+            // Opaque: these chips sit over the live viewfinder, and a tinted translucent
+            // fill left the label competing with whatever was behind it.
+            .background(if (selected) CameraPalette.AccentSoft else PanelBackground)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp)
             .width(64.dp),
     ) {
         Text(
             text = stringResource(param.labelRes),
-            color = if (selected) Accent else CameraPalette.TextSecondary,
+            color = if (selected) CameraPalette.AccentDeep else CameraPalette.TextSecondary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
         )

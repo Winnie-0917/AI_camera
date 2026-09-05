@@ -411,8 +411,25 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 onSelect = { ratio -> viewModel.updateSettings { it.copy(zoomRatio = ratio) } },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 26.dp),
+                    .padding(bottom = if (proMode) 12.dp else 26.dp),
             )
+
+            // Over the viewfinder rather than inside the chrome below it: putting these in the
+            // chrome made it taller, which shrank the preview box and re-framed the shot the
+            // instant pro mode was tapped. Opening a parameter editor would have moved it again.
+            if (proMode) {
+                ReadoutHud(
+                    state = state,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CameraPalette.Surface)
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                ProControls(state = state, onChange = viewModel::updateSettings)
+                Spacer(Modifier.height(12.dp))
+            }
 
             Column(
                 modifier = Modifier
@@ -422,12 +439,6 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     .navigationBarsPadding()
                     .padding(vertical = 12.dp),
             ) {
-                if (proMode) {
-                    ReadoutHud(state = state, modifier = Modifier.padding(horizontal = 16.dp))
-                    Spacer(Modifier.height(10.dp))
-                    ProControls(state = state, onChange = viewModel::updateSettings)
-                    Spacer(Modifier.height(14.dp))
-                }
                 ShutterRow(
                     isCapturing = state.isCapturing,
                     onCapture = viewModel::capturePhoto,
@@ -1091,7 +1102,7 @@ private fun ReadoutHud(state: CameraUiState, modifier: Modifier = Modifier) {
     val modeLabel = stringResource(if (isManual) R.string.mode_manual else R.string.mode_auto)
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(
