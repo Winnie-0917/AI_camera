@@ -28,6 +28,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.East
+import androidx.compose.material.icons.filled.HourglassEmpty
+import androidx.compose.material.icons.filled.North
+import androidx.compose.material.icons.filled.RotateLeft
+import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.South
+import androidx.compose.material.icons.filled.West
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material.icons.filled.FlashAuto
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
@@ -552,10 +562,20 @@ private fun AngleGuideBanner(
             stringResource(R.string.ai_angle_perfect)
         else -> stringResource(direction.labelRes)
     }
-    val arrow = when {
-        advice == null -> "…"
-        perfect || direction == null -> "✓"
-        else -> direction.arrow
+    val icon = when {
+        advice == null -> Icons.Default.HourglassEmpty
+        perfect || direction == null -> Icons.Default.Check
+        else -> when (direction) {
+            AngleDirection.LEFT -> Icons.Default.West
+            AngleDirection.RIGHT -> Icons.Default.East
+            AngleDirection.UP -> Icons.Default.North
+            AngleDirection.DOWN -> Icons.Default.South
+            AngleDirection.ROTATE_LEFT -> Icons.Default.RotateLeft
+            AngleDirection.ROTATE_RIGHT -> Icons.Default.RotateRight
+            AngleDirection.CLOSER -> Icons.Default.ZoomIn
+            AngleDirection.FARTHER -> Icons.Default.ZoomOut
+            AngleDirection.NONE -> Icons.Default.Check
+        }
     }
 
     Row(
@@ -565,7 +585,12 @@ private fun AngleGuideBanner(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = arrow, color = tint, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(22.dp),
+        )
         Spacer(Modifier.width(8.dp))
         Column {
             Text(

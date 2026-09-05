@@ -28,17 +28,21 @@ enum class AngleIssue(val tag: String) {
     }
 }
 
-/** The correction to show the photographer. */
-enum class AngleDirection(val arrow: String, @StringRes val labelRes: Int) {
-    NONE("•", R.string.ai_angle_hold),
-    LEFT("←", R.string.ai_angle_left),
-    RIGHT("→", R.string.ai_angle_right),
-    UP("↑", R.string.ai_angle_up),
-    DOWN("↓", R.string.ai_angle_down),
-    ROTATE_LEFT("↺", R.string.ai_angle_rotate_left),
-    ROTATE_RIGHT("↻", R.string.ai_angle_rotate_right),
-    CLOSER("＋", R.string.ai_angle_closer),
-    FARTHER("－", R.string.ai_angle_farther),
+/**
+ * The correction to show the photographer. Rendered as a vector icon rather than an arrow
+ * character: glyphs like U+21BA/U+21BB are missing from many system fonts and come out as tofu
+ * boxes, which looks like mojibake.
+ */
+enum class AngleDirection(@StringRes val labelRes: Int) {
+    NONE(R.string.ai_angle_hold),
+    LEFT(R.string.ai_angle_left),
+    RIGHT(R.string.ai_angle_right),
+    UP(R.string.ai_angle_up),
+    DOWN(R.string.ai_angle_down),
+    ROTATE_LEFT(R.string.ai_angle_rotate_left),
+    ROTATE_RIGHT(R.string.ai_angle_rotate_right),
+    CLOSER(R.string.ai_angle_closer),
+    FARTHER(R.string.ai_angle_farther),
 }
 
 data class AngleAdvice(
