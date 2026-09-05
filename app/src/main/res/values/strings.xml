@@ -85,6 +85,15 @@
     <string name="ai_angle_closer">Move closer</string>
     <string name="ai_angle_farther">Step back</string>
 
+    <string name="assistant_mode_title">Assistant mode</string>
+    <string name="mode_off">Off</string>
+    <string name="mode_off_desc">The assistant only answers when asked.</string>
+    <string name="mode_angle_desc">Live framing hints while you compose.</string>
+    <string name="mode_pose">Pose coach</string>
+    <string name="mode_pose_desc">Reviews the pose in each photo right after you shoot.</string>
+    <string name="pose_analyzing">Looking at your shot…</string>
+    <string name="pose_unreadable">Could not read the photo that was just taken.</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>

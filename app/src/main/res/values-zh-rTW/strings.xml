@@ -83,6 +83,15 @@
     <string name="ai_angle_closer">靠近一點</string>
     <string name="ai_angle_farther">後退一點</string>
 
+    <string name="assistant_mode_title">助理模式</string>
+    <string name="mode_off">關閉</string>
+    <string name="mode_off_desc">只有主動詢問時才回答。</string>
+    <string name="mode_angle_desc">取景時即時提示構圖。</string>
+    <string name="mode_pose">姿勢指導</string>
+    <string name="mode_pose_desc">每次拍完立刻分析照片中的姿勢。</string>
+    <string name="pose_analyzing">正在看你剛拍的照片…</string>
+    <string name="pose_unreadable">讀不到剛才拍的照片。</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">語言</string>

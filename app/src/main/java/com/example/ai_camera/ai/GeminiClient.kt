@@ -195,6 +195,88 @@ object GeminiClient {
             )
         }
 
+    /**
+     * Critiques the pose in a photo that was just taken. Returns a normal chat message so it lands
+     * in the conversation like any other reply, avatar reaction included.
+     */
+    suspend fun analyzePose(
+        jpeg: ByteArray,
+        languageTag: String,
+        cameraContext: String,
+    ): ChatMessage = withContext(Dispatchers.IO) {
+        if (!isConfigured) throw GeminiException("MISSING_KEY")
+
+        val instruction = buildString {
+            append(POSE_PROMPT.format(languageTag))
+            appendLine()
+            appendLine()
+            appendLine("The camera was set to:")
+            append(cameraContext)
+        }
+
+        val body = JSONObject().apply {
+            put(
+                "systemInstruction",
+                JSONObject().put(
+                    "parts",
+                    JSONArray().put(JSONObject().put("text", instruction)),
+                ),
+            )
+            put(
+                "generationConfig",
+                JSONObject().apply {
+                    if (model.contains("flash", ignoreCase = true)) {
+                        put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                    }
+                },
+            )
+            put(
+                "contents",
+                JSONArray().put(
+                    JSONObject().put("role", "user").put(
+                        "parts",
+                        JSONArray()
+                            .put(
+                                JSONObject().put(
+                                    "inline_data",
+                                    JSONObject()
+                                        .put("mime_type", "image/jpeg")
+                                        .put("data", Base64.encodeToString(jpeg, Base64.NO_WRAP)),
+                                ),
+                            )
+                            .put(JSONObject().put("text", "Critique the pose in this photo.")),
+                    ),
+                ),
+            )
+        }
+
+        ChatMessage(fromUser = false, text = rawText(post(body, TIMEOUT_MS)))
+    }
+
+    private val POSE_PROMPT = """
+        You are Mochi, the photographer's shooting buddy, looking at the photo they just took.
+        Comment on the POSE of the person in it - how they are standing or sitting, their posture,
+        the line of their body, where their hands and arms are, the tilt of their head, where they
+        are looking.
+
+        Say what is already working before what is not. They have just pressed the shutter and are
+        showing you their attempt. If the pose genuinely needs nothing, say so plainly and do not
+        invent a fault to seem useful.
+
+        Then give at most two concrete changes they can act on, phrased physically: "drop your
+        shoulder", "turn your hips away from the camera", "give your hands something to do". Where
+        it suits the shot you may suggest one different pose to try next.
+
+        Keep it to three or four short sentences. This is a chat message, not a report: no
+        headings, no bullet lists, no markdown.
+
+        Write the reply in the language identified by the BCP-47 tag %s. Output only the reply
+        itself - never print that tag or name the language, which is a mistake you have made
+        before.
+
+        If nobody is in the photo, say so briefly and comment on the subject and framing instead.
+    """.trimIndent()
+
     /** Pulls the model's text part out of a generateContent response. */
     private fun rawText(response: String): String {
         val candidates = JSONObject(response).optJSONArray("candidates")

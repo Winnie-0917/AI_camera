@@ -83,6 +83,15 @@
     <string name="ai_angle_closer">近づく</string>
     <string name="ai_angle_farther">下がる</string>
 
+    <string name="assistant_mode_title">アシスタントモード</string>
+    <string name="mode_off">オフ</string>
+    <string name="mode_off_desc">聞かれたときだけ答えます。</string>
+    <string name="mode_angle_desc">構図をリアルタイムで案内します。</string>
+    <string name="mode_pose">ポーズガイド</string>
+    <string name="mode_pose_desc">撮影後すぐに写真のポーズを講評します。</string>
+    <string name="pose_analyzing">撮った写真を見ています…</string>
+    <string name="pose_unreadable">撮影した写真を読み込めませんでした。</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">言語</string>

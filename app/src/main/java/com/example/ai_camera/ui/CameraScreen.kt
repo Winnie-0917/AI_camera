@@ -84,7 +84,11 @@ import android.graphics.Matrix
 import android.os.SystemClock
 import android.util.Log
 import android.view.TextureView
+import android.net.Uri
 import com.example.ai_camera.ai.AiAssistantSheet
+import com.example.ai_camera.ai.AssistantMode
+import com.example.ai_camera.ai.AssistantModeSheet
+import com.example.ai_camera.ai.CapturedPhotoLoader
 import com.example.ai_camera.ai.AngleAdvice
 import com.example.ai_camera.ai.AngleDirection
 import com.example.ai_camera.ai.AngleGuidance
@@ -157,7 +161,10 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     var appliedSuggestion by remember { mutableStateOf<StyleSuggestion?>(null) }
     var settingsBeforeSuggestion by remember { mutableStateOf<CaptureSettings?>(null) }
 
-    var angleGuideOn by remember { mutableStateOf(false) }
+    var assistantMode by remember { mutableStateOf(AssistantMode.OFF) }
+    var showModePicker by remember { mutableStateOf(false) }
+    var reviewedUri by remember { mutableStateOf<Uri?>(null) }
+    val angleGuideOn = assistantMode == AssistantMode.ANGLE
     var angleAdvice by remember { mutableStateOf<AngleAdvice?>(null) }
     var angleError by remember { mutableStateOf<String?>(null) }
     var previewView by remember { mutableStateOf<TextureView?>(null) }
@@ -210,6 +217,39 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             Log.d("AngleGuide", "perfect=${angleAdvice?.perfect} failures=$failures wait=${wait}ms")
             delay(wait)
         }
+    }
+
+    // Pose mode: when a shot lands, open the assistant and have it critique the pose.
+    val poseAnalyzing = stringResource(R.string.pose_analyzing)
+    val poseUnreadable = stringResource(R.string.pose_unreadable)
+    LaunchedEffect(state.lastSavedUri, assistantMode) {
+        val uri = state.lastSavedUri
+        if (assistantMode != AssistantMode.POSE || uri == null || uri == reviewedUri) {
+            return@LaunchedEffect
+        }
+        reviewedUri = uri
+        showAssistant = true
+
+        val placeholder = ChatMessage(fromUser = false, text = poseAnalyzing)
+        assistantMessages += placeholder
+        val reply = try {
+            val jpeg = CapturedPhotoLoader.load(context, uri)
+            if (jpeg == null) {
+                ChatMessage(fromUser = false, text = poseUnreadable)
+            } else {
+                GeminiClient.analyzePose(jpeg, languageTag, cameraContextOf(state))
+            }
+        } catch (e: Exception) {
+            val message = if (e is GeminiException && e.message == "MISSING_KEY") {
+                missingKeyMessage
+            } else {
+                e.message ?: e::class.java.simpleName
+            }
+            ChatMessage(fromUser = false, text = message)
+        }
+        // Replace the placeholder rather than leaving both in the transcript.
+        val index = assistantMessages.indexOf(placeholder)
+        if (index >= 0) assistantMessages[index] = reply else assistantMessages += reply
     }
 
     LaunchedEffect(focusRingPosition) {
@@ -290,12 +330,8 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 
             AiAssistantButton(
                 onClick = { showAssistant = true },
-                onLongClick = {
-                    angleGuideOn = !angleGuideOn
-                    if (!angleGuideOn) angleAdvice = null
-                    angleError = null
-                },
-                active = angleGuideOn,
+                onLongClick = { showModePicker = true },
+                active = assistantMode != AssistantMode.OFF,
                 modifier = Modifier
                     .align(Alignment.End)
                     .padding(horizontal = 16.dp, vertical = 4.dp),
@@ -307,7 +343,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     error = angleError,
                     lensFacing = state.settings.lensFacing,
                     onStop = {
-                        angleGuideOn = false
+                        assistantMode = AssistantMode.OFF
                         angleAdvice = null
                         angleError = null
                     },
@@ -369,6 +405,20 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     modifier = Modifier.padding(horizontal = 32.dp),
                 )
             }
+        }
+
+        if (showModePicker) {
+            AssistantModeSheet(
+                current = assistantMode,
+                onSelect = { mode ->
+                    assistantMode = mode
+                    angleAdvice = null
+                    angleError = null
+                    // Only shots taken from now on get reviewed, not one already sitting in state.
+                    if (mode == AssistantMode.POSE) reviewedUri = state.lastSavedUri
+                },
+                onDismiss = { showModePicker = false },
+            )
         }
 
         if (showSettings) {
