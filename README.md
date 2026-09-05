@@ -96,6 +96,12 @@ white balance, focus, zoom, flash, and what the lens is capable of — so you ca
 - "Why is my shot blurry at these settings?"
 - "What shutter speed freezes a running dog?"
 
+The assistant is **Mochi**, the puppy from the app icon — a shooting buddy rather than a manual.
+The persona is deliberately confined to tone: the system prompt states that technique outweighs
+friendliness, and carries explicit exposure trade-offs (blur comes from a slow shutter, so raising
+exposure compensation must never be offered as a cure for it). Suggestion-card labels stay
+descriptive, since those are controls the user taps.
+
 It replies in whatever language you ask in.
 
 ### One-tap styles

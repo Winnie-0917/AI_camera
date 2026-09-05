@@ -59,7 +59,7 @@
     <string name="ai_title">AI アシスタント</string>
     <string name="ai_hint">撮影について質問…</string>
     <string name="ai_send">送信</string>
-    <string name="ai_empty">撮影に関する質問をどうぞ。アシスタントは現在のカメラ設定を把握しています。</string>
+    <string name="ai_empty">やあ、モチだよ！撮影のことは何でも聞いてね。今のカメラ設定は見えているよ。</string>
     <string name="ai_no_key">API キーが未設定です。プロジェクト直下の .env に GEMINI_API_KEY を追加して再ビルドしてください。README.md を参照。</string>
 
     <string name="ai_apply">適用</string>

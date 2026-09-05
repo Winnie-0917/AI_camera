@@ -61,7 +61,7 @@
     <string name="ai_title">AI Assistant</string>
     <string name="ai_hint">Ask about your shot…</string>
     <string name="ai_send">Send</string>
-    <string name="ai_empty">Ask anything about photography — the assistant can see your current camera settings.</string>
+    <string name="ai_empty">Hi, I’m Mochi! Ask me anything about your shot — I can see your current camera settings.</string>
     <string name="ai_no_key">No API key configured. Add GEMINI_API_KEY to the .env file in the project root, then rebuild. See README.md.</string>
 
     <string name="ai_apply">Apply</string>

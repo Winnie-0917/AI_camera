@@ -59,7 +59,7 @@
     <string name="ai_title">AI 助理</string>
     <string name="ai_hint">詢問拍攝相關問題…</string>
     <string name="ai_send">傳送</string>
-    <string name="ai_empty">任何攝影問題都可以問——助理看得到你目前的相機參數。</string>
+    <string name="ai_empty">嗨，我是麻糬！拍照上有什麼問題都可以問我，你現在的相機參數我都看得到。</string>
     <string name="ai_no_key">尚未設定 API 金鑰。請在專案根目錄的 .env 檔中加入 GEMINI_API_KEY 後重新建置。詳見 README.md。</string>
 
     <string name="ai_apply">套用</string>
