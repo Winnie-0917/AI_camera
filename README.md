@@ -1,229 +1,186 @@
 # AI_camera
 
-A professional manual camera app for Android, built directly on **Camera2** (not CameraX — full
-manual control needs raw `CaptureRequest` access). Includes a Gemini-powered AI photography
-assistant that can see your current camera settings.
+## 問題與目標
 
-## Features
+手機攝影初學者往往難以理解 ISO、快門、白平衡與構圖之間的關係，也不容易將攝影建議轉換成實際設定。AI_camera 是一款 Android 手動相機，面向想學習攝影或需要細部控制拍攝參數的使用者，結合 Camera2 與 Gemini 攝影助理 Mochi，協助使用者在拍攝過程中理解設定、調整風格並改善構圖。
 
-**Manual controls** — each one is hidden automatically if the camera does not actually support it:
+## 核心功能
 
-| Control | Notes |
-|---|---|
-| ISO | Requires `MANUAL_SENSOR`. Linked with shutter: Camera2 needs both once AE is off |
-| Shutter speed | Full sensor range, e.g. 1/10000 – 1.0" |
-| Exposure compensation | Auto-exposure mode only |
-| White balance | 7 presets + manual Kelvin (2000–10000K) |
-| Focus | Autofocus, tap-to-focus, or manual distance (∞ ↔ macro) |
-| Zoom | Digital zoom via sensor crop region |
-| JPEG quality | 50–100 |
-| Flash | Off / auto / on / torch |
-| Aspect ratio | Full / 4:3 / 16:9 / 1:1 |
+- **手動攝影控制**：支援 ISO、快門、曝光補償、白平衡預設與手動色溫（2000–10000K）、自動／點按／手動對焦、數位變焦、JPEG 品質、閃光燈及照片比例。依鏡頭能力自動隱藏不支援的選項。
+- **拍攝輔助與儲存**：支援 RAW（DNG）與 JPEG 同時拍攝、即時亮度直方圖、九宮格、水平儀、自拍計時、EXIF 資訊及前後鏡頭切換。前鏡頭預覽採鏡像顯示，儲存照片維持非鏡像影像。
+- **AI 攝影問答與一鍵套用**：將目前相機設定與鏡頭能力提供給 Gemini，回答拍攝問題。風格建議以結構化參數卡片呈現，套用前會檢查硬體能力並限制參數範圍。
+- **構圖與姿勢建議**：即時構圖模式定期分析取景畫面，提供移動或傾斜相機的提示；姿勢模式在拍照後開啟助理，分析照片中的姿勢。
+- **情緒角色與多語介面**：Mochi 依回覆文字切換七種情緒 GIF；支援英文、繁體中文與日文介面。情緒分類支援裝置端 BERT／ONNX 推論，模型不可用時改用關鍵字分類。
 
-**Selfies:** the front preview is mirrored, as people expect when framing themselves. Only the
-preview — the saved photo keeps the true unmirrored image, and the angle guide is fed the
-unmirrored frame so its left/right reasoning is unaffected.
+## 系統架構
 
-**Other:** RAW (DNG) + JPEG in one capture, live luminance histogram, rule-of-thirds grid,
-level indicator, self-timer, EXIF metadata, front/back camera.
+架構分為「拍攝與儲存」及「AI 攝影助理」兩條流程。藍色為操作介面、綠色為裝置端處理、紫色為雲端服務、橘色為輸出結果。
 
-**Languages:** English, 繁體中文, 日本語 (Settings → Language, or follow the system).
+### 拍攝與儲存
 
-## Setup
+```mermaid
+flowchart LR
+    UI["相機介面<br/>Jetpack Compose"] --> State["拍攝設定<br/>CameraViewModel"]
+    State --> Camera["相機控制<br/>Camera2 ＋ 手機鏡頭"]
+    Camera --> Save["影像處理<br/>裁切、EXIF"]
+    Save --> Photo["系統相簿<br/>JPEG／DNG"]
 
-### 1. API key (`.env`)
+    classDef interface fill:#DBEAFE,stroke:#2563EB,color:#172554
+    classDef local fill:#DCFCE7,stroke:#16A34A,color:#14532D
+    classDef output fill:#FFEDD5,stroke:#EA580C,color:#7C2D12
+    class UI interface
+    class State,Camera,Save local
+    class Photo output
+```
 
-The AI assistant needs a Gemini API key. Get one free at
-**https://aistudio.google.com/apikey**.
+### AI 攝影助理
 
-Copy the template and fill in your key:
+```mermaid
+flowchart TD
+    Input["提問、相機設定與影像"] --> Client["AI 助理<br/>GeminiClient"]
+    Client <-->|HTTPS| Cloud["雲端分析<br/>Gemini API"]
+    Client --> Advice["攝影回覆<br/>構圖／姿勢提示"]
+    Client --> Check["參數建議<br/>檢查鏡頭能力與範圍"]
+    Client --> Emotion["裝置端情緒分類<br/>BERT／ONNX 或關鍵字"]
+    Check --> Apply["使用者一鍵套用<br/>更新拍攝設定"]
+    Emotion --> Avatar["Mochi 表情<br/>GIF 動畫"]
+
+    classDef interface fill:#DBEAFE,stroke:#2563EB,color:#172554
+    classDef local fill:#DCFCE7,stroke:#16A34A,color:#14532D
+    classDef cloud fill:#F3E8FF,stroke:#9333EA,color:#581C87
+    classDef output fill:#FFEDD5,stroke:#EA580C,color:#7C2D12
+    class Input interface
+    class Client,Check,Emotion local
+    class Cloud cloud
+    class Advice,Apply,Avatar output
+```
+
+前端與相機控制邏輯皆在 Android App 內執行，透過 Camera2 操作硬體。AI 功能由 App 直接呼叫 Gemini API，目前沒有獨立後端或應用程式資料庫；照片透過 Android MediaStore 儲存。情緒分類在裝置端執行，GIF 素材由 App assets 載入。
+
+主要程式目錄位於 `app/src/main/java/com/example/ai_camera/`：
+
+| 目錄 | 職責 |
+| --- | --- |
+| `camera/` | 相機工作階段、拍攝參數、鏡頭能力、影像處理與儲存 |
+| `ai/` | Gemini 通訊、對話介面、風格建議與構圖判斷 |
+| `emotion/` | 文字分段、WordPiece 分詞、情緒分類與角色動畫 |
+| `settings/` | App 語言與設定介面 |
+| `ui/` | 取景畫面、控制面板、狀態管理與輔助疊圖 |
+
+## 使用技術
+
+| 類型 | 技術／服務 | 用途 |
+| --- | --- | --- |
+| AI 模型 | Gemini（預設 `gemini-2.5-flash`） | 攝影問答、參數建議、構圖與姿勢分析 |
+| AI 模型 | 中文 BERT、int8 ONNX、ONNX Runtime | 裝置端文字情緒分類；模型需另行提供 |
+| 前端 | Kotlin、Jetpack Compose、Material 3 | Android 相機與助理操作介面 |
+| 後端 | 無獨立後端；App 內的 GeminiClient | 直接呼叫 Gemini API |
+| 相機與儲存 | Camera2、MediaStore、ExifInterface | 手動拍攝、照片儲存與 EXIF 寫入 |
+| 非同步與圖片 | Kotlin Coroutines、Coil | 非同步處理與 GIF 顯示 |
+| 建置工具 | Gradle Wrapper、Android SDK | 建置、測試與安裝 Android App |
+
+## 安裝與執行
+
+### 1. 環境需求
+
+- Android Studio 與 JDK 21；在 Android Studio 的 Gradle JDK 設定中選擇 JDK 21。
+- Android SDK Platform 35，並完成 Android SDK 路徑設定（可由 Android Studio 開啟專案後設定，或於 `local.properties` 設定 `sdk.dir`）。
+- Android 7.0（API 24）以上的裝置；目前建置包含 `arm64-v8a` 與 `x86_64` ABI。
+- 實機測試需啟用 USB 偵錯並允許電腦連線。完整手動控制與 RAW 功能須由實機鏡頭支援。
+
+### 2. 設定 Gemini API
+
+在專案根目錄（與 `settings.gradle.kts` 同層）複製設定範本：
 
 ```bash
+# macOS／Linux／Git Bash
 cp .env.example .env
 ```
 
-Then edit `.env` in the **project root** (same folder as `settings.gradle.kts`):
+Windows PowerShell：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+從 [Google AI Studio](https://aistudio.google.com/apikey) 取得 API key，編輯 `.env`：
 
 ```properties
-GEMINI_API_KEY=AIza...your_key_here
+GEMINI_API_KEY=your_key_here
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-**Rebuild after changing `.env`** — the key is read at build time and compiled into
-`BuildConfig`, so a running build will not pick up edits.
+`GEMINI_MODEL` 可省略，預設值為 `gemini-2.5-flash`，實際可用模型依帳號權限而定。建置時會優先讀取 `.env` 中的設定，缺少的欄位再讀取同名環境變數。若不使用 AI 功能，可不建立 `.env`，相機仍可建置與執行。
 
-> ⚠️ Use `clean` when you change the key. `BuildConfig.GEMINI_API_KEY` is a `static final String`,
-> i.e. a compile-time constant that the compiler **inlines into the calling code**. An incremental
-> build regenerates `BuildConfig` but does not necessarily recompile the classes that read it, so
-> the app keeps using the old value and still reports "no API key configured".
+### 3. 建置並安裝
+
+在專案根目錄執行，並確認 Gradle 使用 JDK 21、裝置已連線：
 
 ```bash
+# macOS／Linux／Git Bash
 ./gradlew clean assembleDebug
+./gradlew installDebug
 ```
 
-Without a key the app still builds and runs — every other feature works, and the assistant simply
-tells you the key is missing.
+Windows PowerShell：
 
-`GEMINI_MODEL` is optional (defaults to `gemini-2.5-flash`). Any model your key can access works,
-e.g. `gemini-2.5-pro` for stronger reasoning or `gemini-2.0-flash`.
-
-`.env` is **git-ignored** and must never be committed. `.env.example` is the committed template.
-A `GEMINI_API_KEY` environment variable is used as a fallback if `.env` is absent, which is
-convenient for CI.
-
-> **Security note.** Anything compiled into an APK can be extracted by decompiling it, so this
-> setup is fine for development and personal builds but is *not* safe for a public release. For a
-> shipped app, put the key on a backend you control and have the app call that instead.
-
-### 2. Build
-
-Requires **JDK 21** — the JBR bundled with Android Studio. Gradle 8.10.2 cannot parse Java 25 and
-will fail with `IllegalArgumentException: 25` during Kotlin DSL compilation.
-
-In Android Studio: *Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK →
-jbr-21*.
-
-From the command line:
-
-```bash
-JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew installDebug
+```powershell
+.\gradlew.bat clean assembleDebug
+.\gradlew.bat installDebug
 ```
 
-## Using the AI assistant
+Debug APK 產出位置：`app/build/outputs/apk/debug/app-debug.apk`。也可使用 Android Studio 開啟專案，完成 Gradle 同步後選擇裝置並執行。首次開啟 App 時，依系統提示授予相機及必要的儲存權限。
 
-Tap the yellow ✨ button at the top right of the viewfinder.
+### 4. 操作方式
 
-Every question is sent with a snapshot of the current camera state — exposure mode, ISO, shutter,
-white balance, focus, zoom, flash, and what the lens is capable of — so you can ask things like:
+- 使用取景畫面的控制面板調整拍攝參數，再按快門拍照。
+- 點按取景畫面右上方的助理按鈕，詢問「現在這個光線該用什麼設定？」或「我想要暖色調」。若回覆包含建議卡片，可按套用更新相機設定。
+- 長按助理按鈕開啟模式選單，選擇即時構圖、拍照後姿勢建議或關閉。構圖與姿勢模式互斥。
+- 在設定中切換英文、繁體中文、日文，或跟隨系統語言。
 
-- 「現在這個光線該用什麼設定？」
-- "Why is my shot blurry at these settings?"
-- "What shutter speed freezes a running dog?"
+### 5. 選用：情緒模型
 
-The assistant is **Mochi**, the puppy from the app icon — a shooting buddy rather than a manual.
-The persona is deliberately confined to tone: the system prompt states that technique outweighs
-friendliness, and carries explicit exposure trade-offs (blur comes from a slow shutter, so raising
-exposure compensation must never be offered as a cure for it). Suggestion-card labels stay
-descriptive, since those are controls the user taps.
+目前儲存庫包含詞彙表與 GIF，但不包含 `emotion_int8.onnx`、訓練 checkpoint 或 `emotion_model/` 匯出工具。缺少模型時，App 會自動改用關鍵字情緒分類，仍可執行。
 
-It replies in whatever language you ask in.
+若已有與此專案相容的模型，將其放入 `app/src/main/assets/emotion/emotion_int8.onnx`，確認同目錄的 `vocab.txt` 與模型相符後重新建置。完整 BERT 情緒分類的重現仍需團隊補充模型來源、授權與匯出流程。
 
-### One-tap styles
+## 作品展示
 
-Ask for a *look* rather than a fact — "make it moody and cinematic", 「我想要暖色調」, "make this
-look better" — and the reply comes with a **suggestion card** listing concrete parameters and an
-**Apply** button that sets them on the camera.
+- 作品展示網址（選填）：待補充。
+- 評選影片：待補充。
+- 建議展示流程：手動調整拍攝參數 → 向 Mochi 詢問攝影建議 → 一鍵套用風格 → 啟用即時構圖 → 切換姿勢模式並拍照。
 
-The parameters arrive as structured JSON (Gemini `responseSchema`), not parsed out of prose, so
-Apply never depends on the model's formatting. Before anything reaches the camera it is checked
-against that lens's real capabilities and clamped to its ranges — asking for manual white balance
-on a camera without `MANUAL_POST_PROCESSING` drops that one field and says so, rather than sending
-an unsupported request.
+## 限制與未來工作
 
-### Live angle guide
+- **硬體限制**：手動 ISO／快門需 `MANUAL_SENSOR` 能力，RAW 需 `RAW` 能力；不支援的控制項會隱藏。關閉自動曝光後，ISO 與快門必須共同設定；曝光補償僅適用於自動曝光。
+- **白平衡限制**：手動色溫相對於裝置自動白平衡增益調整，非日光環境下的標示色溫可能與實際色溫有落差。
+- **網路與配額**：Gemini 功能需網路及有效 API key。即時構圖在需修正時約每 5 秒分析一次、構圖良好時約每 8 秒一次；失敗時採指數退避，最長間隔 2 分鐘。持續使用會增加 API 用量。
+- **影像傳輸**：使用構圖或姿勢分析時，相關影像會傳送至 Gemini；公開發佈前需完善資料使用說明與使用者同意流程。
+- **模型與素材重現**：BERT 模型權重與匯出工具未納入儲存庫，來源及授權尚待補齊；目前可使用關鍵字分類替代。
+- **後續方向**：建立保管金鑰的後端、補齊模型與素材授權、擴充不同裝置的相機相容性驗證，並持續改善構圖與姿勢建議品質。
 
-**Long-press** the ✨ button to toggle it. The app samples the viewfinder, sends the frame to the
-model, and shows one physical correction — `→ move right`, `↓ tilt down`, `✓ perfect` — updating
-on a timer until you switch it off.
+## 第三方服務、資料與素材
 
-The model is asked only to *describe* the image — "subject sits left of centre", "horizon is
-high" — and the app derives the instruction from that. Asking the model for the correction
-directly produced reversed advice, because with a subject on the left it reasons about pushing the
-subject rightwards rather than about moving the camera. Two rules live in `AngleGuidance`:
+以下列出目前使用的主要服務、技術及素材來源。第三方元件的確切授權與聲明應以所用版本隨附文件為準；尚未確認的項目標示為待補充。
 
-- You centre a subject by turning the camera **towards** it. Panning left brings content at the
-  left edge in towards the middle.
-- The front lens faces the photographer, so its left is their right: left/right and the sense of
-  rotation are mirrored for the front camera, while up/down and closer/farther are not.
+| 項目 | 來源／連結 | 使用方式與授權狀態 |
+| --- | --- | --- |
+| Gemini API | [Google AI Studio](https://aistudio.google.com/apikey) | 雲端 AI 服務；依服務條款與帳號配額使用 |
+| Android、AndroidX、Jetpack Compose | [Android 開發文件](https://developer.android.com/) | 相機、介面與儲存相關元件；依各元件隨附授權 |
+| Kotlin、Kotlin Coroutines | [Kotlin](https://kotlinlang.org/) | 程式語言與非同步處理；依各元件隨附授權 |
+| ONNX Runtime | [原始碼儲存庫](https://github.com/microsoft/onnxruntime) | 裝置端推論；依所用版本隨附授權 |
+| Coil | [原始碼儲存庫](https://github.com/coil-kt/coil) | 圖片與 GIF 載入；依所用版本隨附授權 |
+| 中文 BERT 情緒模型與詞彙表 | `app/src/main/assets/emotion/`（目前僅含詞彙表） | 基礎模型、訓練資料、權重下載連結與授權待補充 |
+| Mochi GIF、角色圖與 App 圖示 | `app/src/main/assets/icon_gif/`、`app/src/main/res/` | 作者、原始來源與授權方式待補充 |
 
-Each call carries the previous two checks (a 3-scan sliding window, model-only — the viewfinder
-shows just the latest). Judging every frame independently made it oscillate: a subject near the
-middle reads as slightly left on one check and slightly right on the next, so it sent the user
-back and forth. The prompt also judges generously — near the middle third counts as centred, a few
-degrees off counts as level — because a bar that is never reached means the guide never stops
-correcting.
+請勿提交 API key、Token 或個人資料；用於展示的照片與影片也應確認具有使用權限。
 
-Cadence: **5s** while the framing needs work, **8s** once it reports perfect, since there is
-nothing to correct while the shot is already good. Failures back off exponentially (15s, 30s, …
-capped at 2 min) so a rate-limited or offline API is not polled on the normal cadence.
+## 團隊成員
 
-> ⚠️ This is by far the most quota-hungry feature: a 5s cadence is ~12 requests per minute, which
-> exhausts a free-tier key quickly. Expect `You exceeded your current quota` (HTTP 429) if you
-> leave it running. Frames are downscaled to 640px and sent at JPEG quality 80 to keep each call
-> small.
+| 姓名 | 分工 |
+| --- | --- |
+| 待補充 | 待補充 |
 
-`thinkingBudget` is set to 0 for `flash` models: 2.5 models think before answering by default,
-which together with JSON mode pushed responses past a 60s timeout. Pro models require a budget of
-at least 128, so they are left alone.
+## License
 
-## Emotion avatar
-
-The assistant's face is an animated GIF that reacts to what it just said. The reply is cut into
-chunks at punctuation — but only once a chunk exceeds five characters, since splitting at every
-mark yields fragments like "好的" that carry no emotion and make the face flicker. Each chunk is
-classified and the matching GIF plays; `6.gif` is the idle face.
-
-Classification runs **on device** using the fine-tuned Chinese BERT in `emotion_model/`, exported
-to int8 ONNX (~103MB) and run through ONNX Runtime. Roughly 70ms per sentence after a ~1.3s first
-load.
-
-The GIFs are used at their original 480x480. They were downscaled once to save 25MB and it broke
-them: re-encoding with a per-frame adaptive palette does not preserve the frame disposal the
-originals rely on, and the avatar flickered. If they ever need shrinking, use a tool that
-rewrites GIF structure properly (gifsicle) rather than re-encoding frame by frame.
-
-### Rebuilding the model
-
-The export is git-ignored: at 103MB it exceeds GitHub's 100MB file limit, and it is reproducible
-from the checkpoint.
-
-```bash
-python emotion_model/export_onnx.py    # writes emotion_model/export/emotion_int8.onnx
-cp emotion_model/export/emotion_int8.onnx app/src/main/assets/emotion/
-cp emotion_model/export/vocab.txt        app/src/main/assets/emotion/
-```
-
-Two things that are easy to get wrong here:
-
-- **Quantise per-channel.** Default per-tensor dynamic quantisation collapses this model's
-  predictions toward 中性: 95.3% agreement with fp32 against 100% for per-channel, at the same
-  file size. `emotion_model/eval_quant.py` measures this.
-- **ONNX Runtime, not TFLite.** transformers 5 removed TensorFlow, so there is no first-party path
-  from this checkpoint to `.tflite`; the remaining ONNX→TF converters add a second lossy hop for
-  nothing.
-
-The tokenizer is reimplemented in Kotlin (`WordPieceTokenizer`) because HuggingFace's is
-Python-only. `WordPieceTokenizerTest` asserts token-id parity against the real tokenizer — a
-mismatch there feeds the model text it was never trained on and shows up as confident nonsense
-rather than an error.
-
-## Project layout
-
-```
-app/src/main/java/com/example/ai_camera/
-├── camera/         Camera2 layer
-│   ├── CameraController.kt   Session, capture requests, JPEG/DNG capture
-│   ├── CameraSpecs.kt        Per-camera capabilities + adjustability checks
-│   ├── CaptureSettings.kt    All adjustable parameters (immutable state)
-│   ├── WhiteBalance.kt       Kelvin → RGGB gains
-│   ├── ImageSaver.kt         MediaStore + EXIF
-│   └── ImageProcessing.kt    Aspect-ratio cropping
-├── ai/             Gemini assistant (client + chat UI)
-├── settings/       Per-app language switching
-└── ui/             Compose viewfinder, controls, overlays
-```
-
-### A note on manual white balance
-
-`COLOR_CORRECTION_GAINS` operates in raw sensor space, where green dominates a Bayer array, so
-gains derived purely from a black-body model render with a heavy green cast. Instead the Kelvin
-slider shifts *relative to the gains the device's own AWB produced*, which are already calibrated
-for that sensor. At 5500K the result matches auto white balance; the slider warms or cools from
-there. The trade-off: the number tracks true colour temperature closely in daylight but drifts
-under strongly non-daylight illuminants.
-
-## Requirements
-
-- Android 7.0 (API 24) or newer
-- Manual controls need a camera reporting `MANUAL_SENSOR`; RAW needs the `RAW` capability. The app
-  detects both and hides what is unavailable.
+目前儲存庫尚未包含 `LICENSE` 檔案，專案授權尚待團隊確認。選定授權後，請於根目錄加入對應的 `LICENSE`，並在此標示授權名稱；第三方服務、模型與素材仍依各自的條款或授權使用。
