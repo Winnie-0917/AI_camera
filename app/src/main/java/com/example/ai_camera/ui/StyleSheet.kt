@@ -252,20 +252,24 @@ private fun StyleTile(
     }
 
     Column(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(CameraPalette.CreamDim)
+            .border(
+                width = if (selected) 2.dp else 0.dp,
+                color = if (selected) CameraPalette.Accent else Color.Transparent,
+                shape = RoundedCornerShape(14.dp),
+            )
+            .clickable(onClick = onClick),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                // Takes whatever the row has left after the label, so the tile shrinks to fit the
-                // screen instead of the six of them deciding how tall the picker is.
+                // Flush with the card's own edges - the picture used to sit inset, which left a
+                // margin of card colour around three sides of it. The card now shows only as the
+                // strip the label sits on. Takes whatever the row has left after that label, so
+                // the tile shrinks to fit the screen rather than deciding how tall the picker is.
                 .weight(1f)
-                .clip(RoundedCornerShape(14.dp))
-                .border(
-                    width = if (selected) 2.dp else 0.dp,
-                    color = if (selected) CameraPalette.Accent else Color.Transparent,
-                    shape = RoundedCornerShape(14.dp),
-                )
                 .background(CameraPalette.Cream),
         ) {
             if (demo != null) {
@@ -287,7 +291,7 @@ private fun StyleTile(
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp),
+                .padding(vertical = 7.dp),
             textAlign = TextAlign.Center,
         )
     }
