@@ -110,6 +110,21 @@ against that lens's real capabilities and clamped to its ranges — asking for m
 on a camera without `MANUAL_POST_PROCESSING` drops that one field and says so, rather than sending
 an unsupported request.
 
+### Live angle guide
+
+**Long-press** the ✨ button to toggle it. The app samples the viewfinder, sends the frame to the
+model, and shows one physical correction — `→ move right`, `↓ tilt down`, `✓ perfect` — updating
+on a timer until you switch it off.
+
+Cadence: **3s** while the framing needs work, **5s** once it reports perfect, since there is
+nothing to correct while the shot is already good. Failures back off exponentially (15s, 30s, …
+capped at 2 min) so a rate-limited or offline API is not polled every 3 seconds.
+
+> ⚠️ This is by far the most quota-hungry feature: a 3s cadence is ~20 requests per minute, which
+> exhausts a free-tier key quickly. Expect `You exceeded your current quota` (HTTP 429) if you
+> leave it running. Frames are downscaled to 640px and sent at JPEG quality 80 to keep each call
+> small.
+
 `thinkingBudget` is set to 0 for `flash` models: 2.5 models think before answering by default,
 which together with JSON mode pushed responses past a 60s timeout. Pro models require a budget of
 at least 128, so they are left alone.

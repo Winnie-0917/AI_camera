@@ -3,7 +3,9 @@ package com.example.ai_camera.ui
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,6 +57,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -64,7 +69,16 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import android.hardware.camera2.CameraCharacteristics
 import com.example.ai_camera.R
+import android.graphics.Bitmap
+import android.os.SystemClock
+import android.util.Log
+import android.view.TextureView
 import com.example.ai_camera.ai.AiAssistantSheet
+import com.example.ai_camera.ai.AngleAdvice
+import com.example.ai_camera.ai.AngleDirection
+import com.example.ai_camera.ai.AnglePolling
+import com.example.ai_camera.ai.GeminiClient
+import com.example.ai_camera.ai.GeminiException
 import com.example.ai_camera.ai.ChatMessage
 import com.example.ai_camera.ai.StyleSuggestion
 import com.example.ai_camera.settings.SettingsSheet
@@ -75,7 +89,11 @@ import com.example.ai_camera.camera.CaptureSettings
 import com.example.ai_camera.camera.ExposureMode
 import com.example.ai_camera.camera.FlashMode
 import com.example.ai_camera.camera.TimerOption
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 
 private val Accent = Color(0xFFFFD60A)
 
@@ -116,6 +134,49 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     var appliedSuggestion by remember { mutableStateOf<StyleSuggestion?>(null) }
     var settingsBeforeSuggestion by remember { mutableStateOf<CaptureSettings?>(null) }
 
+    var angleGuideOn by remember { mutableStateOf(false) }
+    var angleAdvice by remember { mutableStateOf<AngleAdvice?>(null) }
+    var angleError by remember { mutableStateOf<String?>(null) }
+    var previewView by remember { mutableStateOf<TextureView?>(null) }
+    val missingKeyMessage = stringResource(R.string.ai_no_key)
+    val languageTag = LocalConfiguration.current.locales[0].toLanguageTag()
+
+    // Live angle guide: sample the viewfinder on a timer and ask the model for one correction.
+    // Cadence backs off once the framing is right, purely to cut API calls.
+    LaunchedEffect(angleGuideOn) {
+        if (!angleGuideOn) return@LaunchedEffect
+        var failures = 0
+        while (isActive) {
+            val startedAt = SystemClock.elapsedRealtime()
+            val jpeg = previewView?.let { grabPreviewJpeg(it) }
+            if (jpeg != null) {
+                try {
+                    angleAdvice = GeminiClient.analyzeAngle(jpeg, languageTag)
+                    angleError = null
+                    failures = 0
+                } catch (e: Exception) {
+                    failures++
+                    angleError = if (e is GeminiException && e.message == "MISSING_KEY") {
+                        missingKeyMessage
+                    } else {
+                        e.message ?: e::class.java.simpleName
+                    }
+                }
+            }
+            // Measured from the start of the round trip, so the period is the requested interval
+            // rather than interval + however long the model took.
+            val elapsed = SystemClock.elapsedRealtime() - startedAt
+            val target = if (failures > 0) {
+                AnglePolling.backoffFor(failures)
+            } else {
+                AnglePolling.intervalFor(angleAdvice)
+            }
+            val wait = (target - elapsed).coerceAtLeast(0L)
+            Log.d("AngleGuide", "perfect=${angleAdvice?.perfect} failures=$failures wait=${wait}ms")
+            delay(wait)
+        }
+    }
+
     LaunchedEffect(focusRingPosition) {
         if (focusRingPosition != null) {
             delay(1200)
@@ -145,6 +206,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     s.copy(zoomRatio = (s.zoomRatio * zoom).coerceIn(1f, max))
                 }
             },
+            onViewReady = { previewView = it },
             modifier = Modifier
                 .fillMaxSize()
                 .onSizeChanged { previewSizePx = it.width to it.height },
@@ -187,10 +249,31 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 
             AiAssistantButton(
                 onClick = { showAssistant = true },
+                onLongClick = {
+                    angleGuideOn = !angleGuideOn
+                    if (!angleGuideOn) angleAdvice = null
+                    angleError = null
+                },
+                active = angleGuideOn,
                 modifier = Modifier
                     .align(Alignment.End)
                     .padding(horizontal = 16.dp, vertical = 4.dp),
             )
+
+            if (angleGuideOn) {
+                AngleGuideBanner(
+                    advice = angleAdvice,
+                    error = angleError,
+                    onStop = {
+                        angleGuideOn = false
+                        angleAdvice = null
+                        angleError = null
+                    },
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
 
             if (state.settings.histogramEnabled) {
                 HistogramOverlay(
@@ -421,14 +504,113 @@ private fun TopBar(
     }
 }
 
+/**
+ * Snapshots the viewfinder for the angle guide. Downscaled hard: the model only needs to judge
+ * framing, and a small frame keeps upload latency and token cost down on a repeating timer.
+ */
+private suspend fun grabPreviewJpeg(view: TextureView, maxEdge: Int = 640): ByteArray? {
+    // getBitmap must run on the UI thread; JPEG encoding is pushed off it.
+    val bitmap = withContext(Dispatchers.Main) {
+        if (view.width <= 0 || view.height <= 0 || !view.isAvailable) return@withContext null
+        val scale = maxEdge.toFloat() / maxOf(view.width, view.height)
+        val w = if (scale < 1f) (view.width * scale).toInt() else view.width
+        val h = if (scale < 1f) (view.height * scale).toInt() else view.height
+        runCatching { view.getBitmap(w, h) }.getOrNull()
+    } ?: return null
+
+    return withContext(Dispatchers.IO) {
+        val out = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
+        bitmap.recycle()
+        out.toByteArray()
+    }
+}
+
 @Composable
-private fun AiAssistantButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun AngleGuideBanner(
+    advice: AngleAdvice?,
+    error: String?,
+    onStop: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val perfect = advice?.perfect == true
+    val tint = when {
+        error != null -> Color(0xFFFF6B6B)
+        perfect -> Color(0xFF34C759)
+        else -> Accent
+    }
+    val text = when {
+        error != null -> error
+        advice == null -> stringResource(R.string.ai_angle_analyzing)
+        perfect -> advice.hint.ifBlank { stringResource(R.string.ai_angle_perfect) }
+        else -> advice.hint
+    }
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = arrowFor(advice, perfect),
+            color = tint,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.widthIn(max = 200.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = stringResource(R.string.ai_angle_stop),
+            color = Accent,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .clickable(onClick = onStop)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        )
+    }
+}
+
+private fun arrowFor(advice: AngleAdvice?, perfect: Boolean): String = when {
+    advice == null -> "…"
+    perfect -> "✓"
+    else -> when (advice.direction) {
+        AngleDirection.LEFT -> "←"
+        AngleDirection.RIGHT -> "→"
+        AngleDirection.UP -> "↑"
+        AngleDirection.DOWN -> "↓"
+        AngleDirection.TILT_LEFT -> "↺"
+        AngleDirection.TILT_RIGHT -> "↻"
+        AngleDirection.CLOSER -> "＋"
+        AngleDirection.FARTHER -> "－"
+        AngleDirection.NONE -> "•"
+    }
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+private fun AiAssistantButton(
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
             .size(44.dp)
             .clip(CircleShape)
-            .background(Accent.copy(alpha = 0.9f))
-            .clickable(onClick = onClick),
+            .background(if (active) Color(0xFF34C759) else Accent.copy(alpha = 0.9f))
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

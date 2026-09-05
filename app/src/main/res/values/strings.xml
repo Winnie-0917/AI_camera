@@ -69,6 +69,12 @@
     <string name="ai_revert">Undo</string>
     <string name="ai_reverted">Reverted to the previous settings.</string>
 
+    <string name="ai_angle_title">Angle guide</string>
+    <string name="ai_angle_analyzing">Checking framing…</string>
+    <string name="ai_angle_perfect">Perfect framing</string>
+    <string name="ai_angle_stop">Stop</string>
+    <string name="ai_angle_hint_longpress">Long-press for the angle guide</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>

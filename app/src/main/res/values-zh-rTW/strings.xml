@@ -67,6 +67,12 @@
     <string name="ai_revert">復原</string>
     <string name="ai_reverted">已還原成套用前的參數。</string>
 
+    <string name="ai_angle_title">角度輔助</string>
+    <string name="ai_angle_analyzing">正在判斷構圖…</string>
+    <string name="ai_angle_perfect">構圖完美</string>
+    <string name="ai_angle_stop">停止</string>
+    <string name="ai_angle_hint_longpress">長按可開啟角度輔助</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">語言</string>

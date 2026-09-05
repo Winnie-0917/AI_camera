@@ -67,6 +67,12 @@
     <string name="ai_revert">元に戻す</string>
     <string name="ai_reverted">適用前の設定に戻しました。</string>
 
+    <string name="ai_angle_title">アングルガイド</string>
+    <string name="ai_angle_analyzing">構図を確認中…</string>
+    <string name="ai_angle_perfect">構図は完璧</string>
+    <string name="ai_angle_stop">停止</string>
+    <string name="ai_angle_hint_longpress">長押しでアングルガイド</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">言語</string>

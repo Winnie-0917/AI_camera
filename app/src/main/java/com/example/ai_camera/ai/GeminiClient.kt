@@ -1,5 +1,6 @@
 package com.example.ai_camera.ai
 
+import android.util.Base64
 import com.example.ai_camera.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -88,30 +89,132 @@ object GeminiClient {
             )
         }
 
-        val connection = (URL("$ENDPOINT/$model:generateContent").openConnection() as HttpURLConnection)
+        parseReply(post(body, TIMEOUT_MS))
+    }
+
+    /** Shared HTTP POST to generateContent. */
+    private fun post(body: JSONObject, timeoutMs: Int): String {
+        val connection = URL("$ENDPOINT/$model:generateContent").openConnection() as HttpURLConnection
         connection.apply {
             requestMethod = "POST"
-            connectTimeout = TIMEOUT_MS
-            readTimeout = TIMEOUT_MS
+            connectTimeout = timeoutMs
+            readTimeout = timeoutMs
             doOutput = true
             setRequestProperty("Content-Type", "application/json")
             // Header rather than a ?key= query param, so the key stays out of URLs and logs.
             setRequestProperty("x-goog-api-key", apiKey)
         }
-
         try {
             connection.outputStream.use { it.write(body.toString().toByteArray()) }
-
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val response = stream?.bufferedReader()?.use(BufferedReader::readText).orEmpty()
-
             if (status !in 200..299) throw GeminiException(parseError(response, status))
-            parseReply(response)
+            return response
         } finally {
             connection.disconnect()
         }
     }
+
+    /**
+     * Judges framing from a viewfinder frame. Kept on a short timeout because this runs on a
+     * repeating timer - a slow reply is better dropped than queued behind the next one.
+     */
+    suspend fun analyzeAngle(jpeg: ByteArray, languageTag: String): AngleAdvice =
+        withContext(Dispatchers.IO) {
+            if (!isConfigured) throw GeminiException("MISSING_KEY")
+
+            val body = JSONObject().apply {
+                put(
+                    "systemInstruction",
+                    JSONObject().put(
+                        "parts",
+                        JSONArray().put(JSONObject().put("text", ANGLE_PROMPT.format(languageTag))),
+                    ),
+                )
+                put(
+                    "generationConfig",
+                    JSONObject()
+                        .put("responseMimeType", "application/json")
+                        .put("responseSchema", ANGLE_SCHEMA)
+                        .apply {
+                            if (model.contains("flash", ignoreCase = true)) {
+                                put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+                            }
+                        },
+                )
+                put(
+                    "contents",
+                    JSONArray().put(
+                        JSONObject().put("role", "user").put(
+                            "parts",
+                            JSONArray()
+                                .put(
+                                    JSONObject().put(
+                                        "inline_data",
+                                        JSONObject()
+                                            .put("mime_type", "image/jpeg")
+                                            .put("data", Base64.encodeToString(jpeg, Base64.NO_WRAP)),
+                                    ),
+                                )
+                                .put(JSONObject().put("text", "Judge the framing of this shot.")),
+                        ),
+                    ),
+                )
+            }
+
+            val payload = JSONObject(rawText(post(body, ANGLE_TIMEOUT_MS)))
+            AngleAdvice(
+                perfect = payload.optBoolean("perfect"),
+                direction = AngleDirection.fromTag(payload.optString("direction")),
+                hint = payload.optString("hint").trim(),
+            )
+        }
+
+    /** Pulls the model's text part out of a generateContent response. */
+    private fun rawText(response: String): String {
+        val candidates = JSONObject(response).optJSONArray("candidates")
+            ?: throw GeminiException("Empty response")
+        if (candidates.length() == 0) throw GeminiException("Empty response")
+        val parts = candidates.getJSONObject(0).optJSONObject("content")?.optJSONArray("parts")
+            ?: throw GeminiException("Empty response")
+        return buildString {
+            for (i in 0 until parts.length()) append(parts.getJSONObject(i).optString("text"))
+        }.trim().ifBlank { throw GeminiException("Empty response") }
+    }
+
+    private const val ANGLE_TIMEOUT_MS = 20_000
+
+    private val ANGLE_PROMPT = """
+        You judge camera framing for a photographer looking through a viewfinder. You are given the
+        current live frame. Decide whether the framing and angle are good, and if not, give ONE
+        simple physical correction the person can make right now.
+
+        Set `perfect` to true only when the framing genuinely needs no change - level horizon,
+        subject well placed, nothing important cut off. Otherwise pick the single most useful
+        `direction` and describe it in `hint`.
+
+        `hint` must be very short (at most about 8 words), an instruction the person can act on
+        immediately, e.g. "Tilt down a little, the horizon is high". Write `hint` in the language
+        with BCP-47 tag %s.
+    """.trimIndent()
+
+    private val ANGLE_SCHEMA: JSONObject
+        get() = JSONObject()
+            .put("type", "OBJECT")
+            .put(
+                "properties",
+                JSONObject()
+                    .put("perfect", JSONObject().put("type", "BOOLEAN"))
+                    .put(
+                        "direction",
+                        JSONObject()
+                            .put("type", "STRING")
+                            .put("enum", JSONArray(AngleDirection.entries.map { it.tag })),
+                    )
+                    .put("hint", strField("Very short instruction, in the requested language.")),
+            )
+            .put("required", JSONArray().put("perfect").put("direction").put("hint"))
 
     private fun systemPrompt(cameraContext: String) = """
         You are a photography assistant built into a manual camera app. Give practical, specific

@@ -32,6 +32,8 @@ fun CameraPreview(
     onTapFocus: (Float, Float) -> Unit,
     onZoomDelta: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    /** Hands out the view so callers can snapshot the live frame via TextureView.getBitmap(). */
+    onViewReady: (TextureView) -> Unit = {},
 ) {
     var viewSize by remember { mutableStateOf(0 to 0) }
 
@@ -65,6 +67,7 @@ fun CameraPreview(
 
                         override fun onSurfaceTextureUpdated(surface: SurfaceTexture) = Unit
                     }
+                    onViewReady(this)
                 }
             },
             update = { view ->
