@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -67,6 +68,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -293,59 +295,61 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             .fillMaxSize()
             .background(CameraPalette.Surface)
     ) {
-        CameraPreview(
-            contentAspect = contentAspect,
-            previewRotation = previewRotation,
-            mirrorPreview = mirrorPreview,
-            style = state.settings.style,
-            styleStrength = state.settings.styleStrength,
-            onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
-            onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
-            onTapFocus = { nx, ny ->
-                // The tap is in displayed coordinates; undo the mirror and rotation the
-                // viewfinder applies before mapping it back to the sensor.
-                val facing = specs?.lensFacing ?: CameraCharacteristics.LENS_FACING_BACK
-                val (bx, by) = PreviewOrientation.mapTapToBuffer(nx, ny, facing)
-                viewModel.tapToFocus(bx, by)
-                val (w, h) = previewSizePx
-                if (w > 0 && h > 0 && contentAspect != null) {
-                    focusRingPosition = frameOffsetToView(nx, ny, contentAspect, w, h)
-                }
-            },
-            onZoomDelta = { zoom ->
-                val max = specs?.maxDigitalZoom ?: 1f
-                viewModel.updateSettings { s ->
-                    s.copy(zoomRatio = (s.zoomRatio * zoom).coerceIn(1f, max))
-                }
-            },
-            onViewReady = { previewView = it },
+        // The viewfinder window - whatever is visible between the two chrome bars. The frame
+        // inside it is sized from the width alone and pinned to the top, so switching to pro,
+        // which makes the chrome taller, crops the bottom off the preview instead of rescaling
+        // the whole shot to fit. The capture is untouched and still records the full frame.
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(framePadding)
-                .onSizeChanged { previewSizePx = it.width to it.height },
-        )
+                .clipToBounds(),
+        ) {
+            val frame = Modifier
+                .width(maxWidth)
+                // Required, not preferred: a window shorter than the frame has to crop it rather
+                // than squeeze it back into view.
+                .requiredHeight(contentAspect?.let { maxWidth / it } ?: maxHeight)
+                .align(Alignment.TopCenter)
 
-        // Overlays are constrained to the letterboxed frame so the grid matches the real image.
-        if (contentAspect != null) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(framePadding)) {
-                val viewAspect = maxWidth / maxHeight
-                val frameModifier = if (contentAspect > viewAspect) {
-                    Modifier.fillMaxWidth()
-                } else {
-                    Modifier.fillMaxHeight()
-                }
-                Box(
-                    modifier = frameModifier
-                        .aspectRatio(contentAspect)
-                        .align(Alignment.Center)
-                ) {
-                    if (state.settings.gridEnabled) GridOverlay()
-                    if (state.settings.levelEnabled) LevelOverlay(rollDegrees = rememberDeviceRoll())
-                }
+            CameraPreview(
+                contentAspect = contentAspect,
+                previewRotation = previewRotation,
+                mirrorPreview = mirrorPreview,
+                style = state.settings.style,
+                styleStrength = state.settings.styleStrength,
+                onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
+                onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
+                onTapFocus = { nx, ny ->
+                    // The tap is in displayed coordinates; undo the mirror and rotation the
+                    // viewfinder applies before mapping it back to the sensor.
+                    val facing = specs?.lensFacing ?: CameraCharacteristics.LENS_FACING_BACK
+                    val (bx, by) = PreviewOrientation.mapTapToBuffer(nx, ny, facing)
+                    viewModel.tapToFocus(bx, by)
+                    val (w, h) = previewSizePx
+                    if (w > 0 && h > 0 && contentAspect != null) {
+                        focusRingPosition = frameOffsetToView(nx, ny, contentAspect, w, h)
+                    }
+                },
+                onZoomDelta = { zoom ->
+                    val max = specs?.maxDigitalZoom ?: 1f
+                    viewModel.updateSettings { s ->
+                        s.copy(zoomRatio = (s.zoomRatio * zoom).coerceIn(1f, max))
+                    }
+                },
+                onViewReady = { previewView = it },
+                modifier = frame.onSizeChanged { previewSizePx = it.width to it.height },
+            )
+
+            // The same geometry as the frame, so the grid lines land on the real image.
+            Box(modifier = frame) {
+                if (state.settings.gridEnabled) GridOverlay()
+                if (state.settings.levelEnabled) LevelOverlay(rollDegrees = rememberDeviceRoll())
+                // In here rather than over the whole screen: the tap arrives in frame coordinates,
+                // and drawn against the root it landed a chrome's height too high.
+                focusRingPosition?.let { FocusRing(position = it) }
             }
         }
-
-        focusRingPosition?.let { FocusRing(position = it) }
 
         if (state.isCapturing) ShutterFlashOverlay(visible = true)
 
@@ -411,25 +415,8 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 onSelect = { ratio -> viewModel.updateSettings { it.copy(zoomRatio = ratio) } },
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(bottom = if (proMode) 12.dp else 26.dp),
+                    .padding(bottom = 26.dp),
             )
-
-            // Over the viewfinder rather than inside the chrome below it: putting these in the
-            // chrome made it taller, which shrank the preview box and re-framed the shot the
-            // instant pro mode was tapped. Opening a parameter editor would have moved it again.
-            if (proMode) {
-                ReadoutHud(
-                    state = state,
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CameraPalette.Surface)
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                )
-                Spacer(Modifier.height(8.dp))
-                ProControls(state = state, onChange = viewModel::updateSettings)
-                Spacer(Modifier.height(12.dp))
-            }
 
             Column(
                 modifier = Modifier
@@ -439,6 +426,12 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     .navigationBarsPadding()
                     .padding(vertical = 12.dp),
             ) {
+                if (proMode) {
+                    ReadoutHud(state = state, modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(Modifier.height(10.dp))
+                    ProControls(state = state, onChange = viewModel::updateSettings)
+                    Spacer(Modifier.height(14.dp))
+                }
                 ShutterRow(
                     isCapturing = state.isCapturing,
                     onCapture = viewModel::capturePhoto,
@@ -1102,7 +1095,7 @@ private fun ReadoutHud(state: CameraUiState, modifier: Modifier = Modifier) {
     val modeLabel = stringResource(if (isManual) R.string.mode_manual else R.string.mode_auto)
 
     Row(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Center,
     ) {
         Text(

@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.ai_camera.camera.PhotoStyle
 
@@ -50,11 +51,16 @@ fun CameraPreview(
     /** Hands out the view so callers can snapshot the live frame via TextureView.getBitmap(). */
     onViewReady: (TextureView) -> Unit = {},
 ) {
+    // Written only from onSizeChanged. The surface callbacks report the view's size too, but they
+    // arrive on their own schedule, and whichever wrote last decided how the frame was
+    // transformed - which is how the picture ended up squeezed in one mode and not the other.
     var viewSize by remember { mutableStateOf(0 to 0) }
 
     Box(modifier = modifier) {
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { viewSize = it.width to it.height },
             factory = { context ->
                 TextureView(context).apply {
                     surfaceTextureListener = object : TextureView.SurfaceTextureListener {
@@ -63,7 +69,6 @@ fun CameraPreview(
                             width: Int,
                             height: Int,
                         ) {
-                            viewSize = width to height
                             onSurfaceAvailable(surface)
                         }
 
@@ -71,9 +76,7 @@ fun CameraPreview(
                             surface: SurfaceTexture,
                             width: Int,
                             height: Int,
-                        ) {
-                            viewSize = width to height
-                        }
+                        ) = Unit
 
                         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
                             onSurfaceDestroyed()
@@ -87,12 +90,17 @@ fun CameraPreview(
             },
             update = { view ->
                 applyStyle(view, style, styleStrength)
-                if (contentAspect != null && view.width > 0 && view.height > 0) {
+                val (width, height) = viewSize
+                // The size Compose laid out, not view.width/height: update runs during
+                // composition, before layout, so the view's own dimensions are a frame behind.
+                // Reading them left the picture transformed for the size it used to be - a
+                // squeeze of a few percent that moved every time the chrome changed height.
+                if (contentAspect != null && width > 0 && height > 0) {
                     applyLetterboxTransform(
                         view,
                         contentAspect,
-                        view.width,
-                        view.height,
+                        width,
+                        height,
                         previewRotation,
                         mirrorPreview,
                     )
