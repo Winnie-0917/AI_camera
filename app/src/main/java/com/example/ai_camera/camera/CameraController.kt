@@ -319,11 +319,10 @@ class CameraController(private val appContext: Context) {
     /** Rotation baked into JPEG/DNG for a portrait-locked activity. */
     fun jpegOrientation(): Int {
         val activeSpecs = specs ?: return 0
-        return if (activeSpecs.lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
-            (360 - activeSpecs.sensorOrientation) % 360
-        } else {
-            activeSpecs.sensorOrientation
-        }
+        return JpegOrientation.forCapture(
+            sensorOrientation = activeSpecs.sensorOrientation,
+            lensFacing = activeSpecs.lensFacing,
+        )
     }
 
     suspend fun captureStill(settings: CaptureSettings): CapturedPhoto {
