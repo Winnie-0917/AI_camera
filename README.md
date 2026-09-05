@@ -167,6 +167,11 @@ Classification runs **on device** using the fine-tuned Chinese BERT in `emotion_
 to int8 ONNX (~103MB) and run through ONNX Runtime. Roughly 70ms per sentence after a ~1.3s first
 load.
 
+The GIFs are used at their original 480x480. They were downscaled once to save 25MB and it broke
+them: re-encoding with a per-frame adaptive palette does not preserve the frame disposal the
+originals rely on, and the avatar flickered. If they ever need shrinking, use a tool that
+rewrites GIF structure properly (gifsicle) rather than re-encoding frame by frame.
+
 ### Rebuilding the model
 
 The export is git-ignored: at 103MB it exceeds GitHub's 100MB file limit, and it is reproducible
