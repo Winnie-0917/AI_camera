@@ -20,6 +20,10 @@ assistant that can see your current camera settings.
 | Flash | Off / auto / on / torch |
 | Aspect ratio | Full / 4:3 / 16:9 / 1:1 |
 
+**Selfies:** the front preview is mirrored, as people expect when framing themselves. Only the
+preview — the saved photo keeps the true unmirrored image, and the angle guide is fed the
+unmirrored frame so its left/right reasoning is unaffected.
+
 **Other:** RAW (DNG) + JPEG in one capture, live luminance histogram, rule-of-thirds grid,
 level indicator, self-timer, EXIF metadata, front/back camera.
 

@@ -140,6 +140,9 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     val previewRotation = remember(specs) {
         specs?.let { PreviewOrientation.rotationFor(it.lensFacing) } ?: 0
     }
+    val mirrorPreview = remember(specs) {
+        specs?.let { PreviewOrientation.isMirrored(it.lensFacing) } ?: false
+    }
 
     var focusRingPosition by remember { mutableStateOf<Offset?>(null) }
     var previewSizePx by remember { mutableStateOf(0 to 0) }
@@ -221,16 +224,15 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         CameraPreview(
             contentAspect = contentAspect,
             previewRotation = previewRotation,
+            mirrorPreview = mirrorPreview,
             onSurfaceAvailable = viewModel::onSurfaceTextureAvailable,
             onSurfaceDestroyed = viewModel::onSurfaceTextureDestroyed,
             onTapFocus = { nx, ny ->
-                // The tap is in displayed coordinates; undo the preview rotation before mapping
-                // it back to the sensor, or a tap on a rotated preview focuses the opposite spot.
-                if (previewRotation == 180) {
-                    viewModel.tapToFocus(1f - nx, 1f - ny)
-                } else {
-                    viewModel.tapToFocus(nx, ny)
-                }
+                // The tap is in displayed coordinates; undo the mirror and rotation the
+                // viewfinder applies before mapping it back to the sensor.
+                val facing = specs?.lensFacing ?: CameraCharacteristics.LENS_FACING_BACK
+                val (bx, by) = PreviewOrientation.mapTapToBuffer(nx, ny, facing)
+                viewModel.tapToFocus(bx, by)
                 val (w, h) = previewSizePx
                 if (w > 0 && h > 0 && contentAspect != null) {
                     focusRingPosition = frameOffsetToView(nx, ny, contentAspect, w, h)
