@@ -1,5 +1,6 @@
 package com.example.ai_camera.ui
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -176,13 +177,14 @@ fun StyleSheet(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = stringResource(R.string.style_done),
-                color = CameraPalette.Surface,
+                // Dark on gold: white on this accent is barely legible.
+                color = CameraPalette.TextPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(CameraPalette.Taupe)
+                    .background(CameraPalette.Accent)
                     .clickable(onClick = onDismiss)
                     .padding(vertical = 14.dp),
                 textAlign = TextAlign.Center,
@@ -197,10 +199,41 @@ private fun rememberDemoImage(): ImageBitmap? {
     val context = LocalContext.current
     return remember(context) {
         runCatching {
-            context.assets.open(DEMO_ASSET).use { BitmapFactory.decodeStream(it) }?.asImageBitmap()
+            context.assets.open(DEMO_ASSET).use { BitmapFactory.decodeStream(it) }
+                ?.let(::trimFlatEdges)
+                ?.asImageBitmap()
         }.getOrNull()
     }
 }
+
+/**
+ * Cuts the bands of flat backdrop off the demo image, so the mascot fills the tile instead of
+ * floating in a margin. Measured rather than hard-coded, so swapping the asset still works.
+ */
+private fun trimFlatEdges(source: Bitmap): Bitmap {
+    val w = source.width
+    val h = source.height
+    if (w < 8 || h < 8) return source
+    val backdrop = source.getPixel(1, 1)
+
+    fun rowIsFlat(y: Int): Boolean = (0 until w step 2).all { near(source.getPixel(it, y), backdrop) }
+    fun columnIsFlat(x: Int): Boolean = (0 until h step 2).all { near(source.getPixel(x, it), backdrop) }
+
+    val top = (0 until h / 3).firstOrNull { !rowIsFlat(it) } ?: 0
+    val bottom = (h - 1 downTo h - h / 3).firstOrNull { !rowIsFlat(it) } ?: (h - 1)
+    val left = (0 until w / 3).firstOrNull { !columnIsFlat(it) } ?: 0
+    val right = (w - 1 downTo w - w / 3).firstOrNull { !columnIsFlat(it) } ?: (w - 1)
+
+    val width = right - left + 1
+    val height = bottom - top + 1
+    if (width <= 0 || height <= 0 || (width == w && height == h)) return source
+    return Bitmap.createBitmap(source, left, top, width, height)
+}
+
+private fun near(colour: Int, reference: Int, tolerance: Int = 10): Boolean =
+    kotlin.math.abs(((colour shr 16) and 0xFF) - ((reference shr 16) and 0xFF)) <= tolerance &&
+        kotlin.math.abs(((colour shr 8) and 0xFF) - ((reference shr 8) and 0xFF)) <= tolerance &&
+        kotlin.math.abs((colour and 0xFF) - (reference and 0xFF)) <= tolerance
 
 private const val DEMO_ASSET = "Filter_icon.jpg"
 
@@ -219,16 +252,7 @@ private fun StyleTile(
     }
 
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(CameraPalette.CreamDim)
-            .border(
-                width = if (selected) 2.dp else 0.dp,
-                color = if (selected) CameraPalette.Accent else Color.Transparent,
-                shape = RoundedCornerShape(14.dp),
-            )
-            .clickable(onClick = onClick)
-            .padding(4.dp),
+        modifier = modifier.clickable(onClick = onClick),
     ) {
         Box(
             modifier = Modifier
@@ -236,14 +260,21 @@ private fun StyleTile(
                 // Takes whatever the row has left after the label, so the tile shrinks to fit the
                 // screen instead of the six of them deciding how tall the picker is.
                 .weight(1f)
-                .clip(RoundedCornerShape(11.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .border(
+                    width = if (selected) 2.dp else 0.dp,
+                    color = if (selected) CameraPalette.Accent else Color.Transparent,
+                    shape = RoundedCornerShape(14.dp),
+                )
                 .background(CameraPalette.Cream),
         ) {
             if (demo != null) {
                 Image(
                     bitmap = demo,
                     contentDescription = null,
-                    contentScale = ContentScale.Fit,
+                    // Fills the tile: Fit left cream bars down the sides wherever the tile was
+                    // not exactly the picture's shape.
+                    contentScale = ContentScale.Crop,
                     colorFilter = filter,
                     modifier = Modifier.fillMaxSize(),
                 )
