@@ -37,8 +37,8 @@ import com.example.ai_camera.camera.ExposureMode
 import com.example.ai_camera.camera.FocusMode
 import com.example.ai_camera.camera.WbPreset
 
-private val Accent = Color(0xFFFFD60A)
-private val PanelBackground = Color.Black.copy(alpha = 0.55f)
+private val Accent = CameraPalette.Accent
+private val PanelBackground = CameraPalette.CreamDim
 
 enum class ProParam(@StringRes val labelRes: Int) {
     ISO(R.string.param_iso),
@@ -121,14 +121,14 @@ private fun ParameterChip(
     ) {
         Text(
             text = stringResource(param.labelRes),
-            color = if (selected) Accent else Color.White.copy(alpha = 0.65f),
+            color = if (selected) Accent else CameraPalette.TextSecondary,
             fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(2.dp))
         Text(
             text = value,
-            color = if (isAuto) Color.White.copy(alpha = 0.85f) else Accent,
+            color = if (isAuto) CameraPalette.TextPrimary else Accent,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -170,19 +170,19 @@ private fun EditorHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(title, color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+        Text(title, color = CameraPalette.TextSecondary, fontSize = 12.sp)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(value, color = Accent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             if (autoLabel != null && onToggleAuto != null) {
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = autoLabel,
-                    color = if (isAuto) Accent else Color.White.copy(alpha = 0.6f),
+                    color = if (isAuto) Accent else CameraPalette.TextSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isAuto) Accent.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.1f))
+                        .background(if (isAuto) Accent.copy(alpha = 0.2f) else CameraPalette.Surface)
                         .clickable { onToggleAuto() }
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
@@ -206,9 +206,9 @@ private fun CameraSlider(
         colors = SliderDefaults.colors(
             thumbColor = Accent,
             activeTrackColor = Accent,
-            inactiveTrackColor = Color.White.copy(alpha = 0.25f),
-            disabledThumbColor = Color.White.copy(alpha = 0.3f),
-            disabledActiveTrackColor = Color.White.copy(alpha = 0.2f),
+            inactiveTrackColor = CameraPalette.Divider,
+            disabledThumbColor = CameraPalette.Divider,
+            disabledActiveTrackColor = CameraPalette.Divider,
         ),
     )
 }
@@ -340,13 +340,13 @@ private fun WhiteBalanceEditor(
                 val isSelected = settings.wbPreset == preset
                 Text(
                     text = stringResource(preset.labelRes),
-                    color = if (isSelected) Accent else Color.White.copy(alpha = 0.75f),
+                    color = if (isSelected) Accent else CameraPalette.TextSecondary,
                     fontSize = 12.sp,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(
                             if (isSelected) Accent.copy(alpha = 0.2f)
-                            else Color.White.copy(alpha = 0.1f)
+                            else CameraPalette.Surface
                         )
                         .clickable { onChange { it.copy(wbPreset = preset) } }
                         .padding(horizontal = 10.dp, vertical = 5.dp),
@@ -484,8 +484,8 @@ private fun RangeLabels(start: String, end: String) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(start, color = Color.White.copy(alpha = 0.45f), fontSize = 10.sp)
-        Text(end, color = Color.White.copy(alpha = 0.45f), fontSize = 10.sp)
+        Text(start, color = CameraPalette.TextSecondary, fontSize = 10.sp)
+        Text(end, color = CameraPalette.TextSecondary, fontSize = 10.sp)
     }
 }
 

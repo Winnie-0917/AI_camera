@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,6 +87,8 @@ import android.util.Log
 import android.view.TextureView
 import android.net.Uri
 import com.example.ai_camera.ai.AiAssistantSheet
+import com.example.ai_camera.emotion.EmotionAvatar
+import com.example.ai_camera.emotion.KeywordEmotionClassifier
 import com.example.ai_camera.ai.AssistantMode
 import com.example.ai_camera.ai.AssistantModeSheet
 import com.example.ai_camera.ai.CapturedPhotoLoader
@@ -112,7 +115,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 
-private val Accent = Color(0xFFFFD60A)
+private val Accent = CameraPalette.Accent
 
 @Composable
 fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
@@ -163,6 +166,8 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
 
     var assistantMode by remember { mutableStateOf(AssistantMode.OFF) }
     var showModePicker by remember { mutableStateOf(false) }
+    var proMode by remember { mutableStateOf(false) }
+    var showProPanel by remember { mutableStateOf(false) }
     var reviewedUri by remember { mutableStateOf<Uri?>(null) }
     val angleGuideOn = assistantMode == AssistantMode.ANGLE
     var angleAdvice by remember { mutableStateOf<AngleAdvice?>(null) }
@@ -262,7 +267,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(CameraPalette.Cream)
     ) {
         CameraPreview(
             contentAspect = contentAspect,
@@ -318,23 +323,21 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
         if (state.isCapturing) ShutterFlashOverlay(visible = true)
 
         Column(modifier = Modifier.fillMaxSize()) {
-            TopBar(
-                state = state,
-                onChange = viewModel::updateSettings,
+            TopChrome(
+                assistantActive = assistantMode != AssistantMode.OFF,
+                histogramOn = state.settings.histogramEnabled,
+                histogramAvailable = specs?.supportsAnalysisStream == true,
                 onOpenSettings = { showSettings = true },
+                onAssistant = { showAssistant = true },
+                onAssistantLongPress = { showModePicker = true },
+                onToggleHistogram = {
+                    viewModel.updateSettings { it.copy(histogramEnabled = !it.histogramEnabled) }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .background(CameraPalette.Surface)
                     .statusBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-            )
-
-            AiAssistantButton(
-                onClick = { showAssistant = true },
-                onLongClick = { showModePicker = true },
-                active = assistantMode != AssistantMode.OFF,
-                modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
             )
 
             if (angleGuideOn) {
@@ -367,7 +370,7 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
             if (state.timerCountdown > 0) {
                 Text(
                     text = "${state.timerCountdown}",
-                    color = Color.White,
+                    color = CameraPalette.OnPreview,
                     fontSize = 72.sp,
                     fontWeight = FontWeight.Light,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -375,17 +378,28 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                 Spacer(Modifier.weight(1f))
             }
 
+            ZoomPills(
+                current = state.settings.zoomRatio,
+                maxZoom = specs?.maxDigitalZoom ?: 1f,
+                onSelect = { ratio -> viewModel.updateSettings { it.copy(zoomRatio = ratio) } },
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 10.dp),
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.35f))
+                    .background(CameraPalette.Surface)
                     .navigationBarsPadding()
                     .padding(vertical = 12.dp),
             ) {
-                ReadoutHud(state = state, modifier = Modifier.padding(horizontal = 16.dp))
-                Spacer(Modifier.height(10.dp))
-                ProControls(state = state, onChange = viewModel::updateSettings)
-                Spacer(Modifier.height(14.dp))
+                if (proMode) {
+                    ReadoutHud(state = state, modifier = Modifier.padding(horizontal = 16.dp))
+                    Spacer(Modifier.height(10.dp))
+                    ProControls(state = state, onChange = viewModel::updateSettings)
+                    Spacer(Modifier.height(14.dp))
+                }
                 ShutterRow(
                     isCapturing = state.isCapturing,
                     onCapture = viewModel::capturePhoto,
@@ -403,6 +417,41 @@ fun CameraScreen(viewModel: CameraViewModel = viewModel()) {
                     },
                     hasPhoto = state.lastSavedUri != null,
                     modifier = Modifier.padding(horizontal = 32.dp),
+                )
+
+                Spacer(Modifier.height(10.dp))
+                ModeSwitch(
+                    proMode = proMode,
+                    onSimple = {
+                        proMode = false
+                        showProPanel = false
+                    },
+                    onPro = {
+                        // Second tap while already in pro opens the full parameter panel, so the
+                        // detailed controls are one gesture away without a separate button.
+                        if (proMode) showProPanel = true else proMode = true
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
+            }
+        }
+
+        if (showProPanel) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(CameraPalette.OnPreviewScrim)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() },
+                    ) { showProPanel = false },
+            ) {
+                ProPanel(
+                    state = state,
+                    onChange = viewModel::updateSettings,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding(),
                 )
             }
         }
@@ -633,6 +682,135 @@ private suspend fun grabPreviewJpeg(
     }
 }
 
+/**
+ * The strip above the viewfinder: settings, the assistant, and the histogram toggle. Everything
+ * else that used to live up here moved into [ProPanel] - a row of eight icons is chrome, not a
+ * camera.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TopChrome(
+    assistantActive: Boolean,
+    histogramOn: Boolean,
+    histogramAvailable: Boolean,
+    onOpenSettings: () -> Unit,
+    onAssistant: () -> Unit,
+    onAssistantLongPress: () -> Unit,
+    onToggleHistogram: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Settings,
+            contentDescription = stringResource(R.string.action_settings),
+            tint = CameraPalette.TextSecondary,
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onOpenSettings),
+        )
+
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(if (assistantActive) CameraPalette.AccentSoft else Color.Transparent)
+                .combinedClickable(onClick = onAssistant, onLongClick = onAssistantLongPress),
+            contentAlignment = Alignment.Center,
+        ) {
+            EmotionAvatar(reply = null, classifier = remember { KeywordEmotionClassifier() }, size = 34.dp)
+        }
+
+        Icon(
+            imageVector = Icons.Default.BarChart,
+            contentDescription = null,
+            tint = when {
+                !histogramAvailable -> CameraPalette.Divider
+                histogramOn -> CameraPalette.Accent
+                else -> CameraPalette.TextSecondary
+            },
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .clickable(enabled = histogramAvailable, onClick = onToggleHistogram),
+        )
+    }
+}
+
+/** Zoom shortcuts over the preview, limited to ratios this lens can actually reach. */
+@Composable
+private fun ZoomPills(
+    current: Float,
+    maxZoom: Float,
+    onSelect: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val ratios = listOf(1f, 2f, 5f).filter { it <= maxZoom }
+    if (ratios.size < 2) return
+
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(CameraPalette.OnPreviewScrim)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ratios.forEach { ratio ->
+            val selected = kotlin.math.abs(current - ratio) < 0.05f
+            Text(
+                text = if (selected) formatZoom(ratio) else "${ratio.toInt()}",
+                color = if (selected) CameraPalette.TextPrimary else CameraPalette.OnPreview,
+                fontSize = 12.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (selected) CameraPalette.Surface else Color.Transparent)
+                    .clickable { onSelect(ratio) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            )
+        }
+    }
+}
+
+/**
+ * Simple or pro. Tapping Pro while already in pro opens the full parameter panel, which keeps the
+ * detailed controls reachable without adding another button to the bar.
+ */
+@Composable
+private fun ModeSwitch(
+    proMode: Boolean,
+    onSimple: () -> Unit,
+    onPro: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(28.dp),
+    ) {
+        listOf(
+            stringResource(R.string.mode_simple) to false,
+            stringResource(R.string.mode_pro) to true,
+        ).forEach { (label, isPro) ->
+            val selected = isPro == proMode
+            Text(
+                text = label,
+                color = if (selected) CameraPalette.Accent else CameraPalette.TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { if (isPro) onPro() else onSimple() }
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+    }
+}
+
 @Composable
 private fun AngleGuideBanner(
     advice: AngleAdvice?,
@@ -825,7 +1003,7 @@ private fun ReadoutHud(state: CameraUiState, modifier: Modifier = Modifier) {
                 append(" EV")
                 if (settings.saveRaw) append("  ·  RAW")
             },
-            color = if (isManual) Accent else Color.White.copy(alpha = 0.85f),
+            color = if (isManual) Accent else CameraPalette.TextSecondary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
         )
@@ -850,14 +1028,14 @@ private fun ShutterRow(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color.White.copy(alpha = 0.12f))
+                .background(CameraPalette.CreamDim)
                 .clickable(enabled = hasPhoto, onClick = onOpenGallery),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Default.PhotoLibrary,
                 contentDescription = stringResource(R.string.action_open_last_photo),
-                tint = Color.White.copy(alpha = if (hasPhoto) 0.9f else 0.35f),
+                tint = if (hasPhoto) CameraPalette.TextSecondary else CameraPalette.Divider,
                 modifier = Modifier.size(22.dp),
             )
         }
@@ -866,10 +1044,12 @@ private fun ShutterRow(
             modifier = Modifier
                 .size(76.dp)
                 .clip(CircleShape)
-                .border(3.dp, Color.White, CircleShape)
+                .border(3.dp, CameraPalette.TextPrimary, CircleShape)
                 .padding(6.dp)
                 .clip(CircleShape)
-                .background(if (isCapturing) Color.White.copy(alpha = 0.5f) else Color.White)
+                .background(
+                    if (isCapturing) CameraPalette.AccentSoft else CameraPalette.Surface
+                )
                 .clickable(enabled = !isCapturing, onClick = onCapture)
                 .alpha(if (isCapturing) 0.6f else 1f)
         )
@@ -878,14 +1058,14 @@ private fun ShutterRow(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.12f))
+                .background(CameraPalette.CreamDim)
                 .clickable(onClick = onSwitchCamera),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Default.Cameraswitch,
                 contentDescription = stringResource(R.string.action_switch_camera),
-                tint = Color.White,
+                tint = CameraPalette.TextSecondary,
                 modifier = Modifier.size(22.dp),
             )
         }

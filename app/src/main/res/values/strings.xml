@@ -94,6 +94,26 @@
     <string name="pose_analyzing">Looking at your shot…</string>
     <string name="pose_unreadable">Could not read the photo that was just taken.</string>
 
+    <string name="group_image">IMAGE</string>
+    <string name="group_exposure">EXPOSURE</string>
+    <string name="group_focus">FOCUS</string>
+    <string name="group_colour">COLOUR</string>
+    <string name="group_aids">GUIDES</string>
+    <string name="panel_format">Format</string>
+    <string name="panel_aspect">Ratio</string>
+    <string name="panel_flash">Flash</string>
+    <string name="panel_timer">Timer</string>
+    <string name="panel_overlays">Overlay</string>
+    <string name="panel_grid">Grid</string>
+    <string name="panel_level">Level</string>
+    <string name="format_jpg">JPG</string>
+    <string name="format_raw_jpg">RAW + JPG</string>
+    <string name="flash_on">On</string>
+    <string name="flash_torch">Torch</string>
+    <string name="focus_mf">MF</string>
+    <string name="mode_simple">Simple</string>
+    <string name="mode_pro">Pro</string>
+
     <!-- Settings -->
     <string name="settings_title">Settings</string>
     <string name="settings_language">Language</string>

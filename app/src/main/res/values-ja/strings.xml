@@ -92,6 +92,26 @@
     <string name="pose_analyzing">撮った写真を見ています…</string>
     <string name="pose_unreadable">撮影した写真を読み込めませんでした。</string>
 
+    <string name="group_image">画像</string>
+    <string name="group_exposure">露出</string>
+    <string name="group_focus">フォーカス</string>
+    <string name="group_colour">色</string>
+    <string name="group_aids">ガイド</string>
+    <string name="panel_format">形式</string>
+    <string name="panel_aspect">比率</string>
+    <string name="panel_flash">フラッシュ</string>
+    <string name="panel_timer">タイマー</string>
+    <string name="panel_overlays">オーバーレイ</string>
+    <string name="panel_grid">グリッド</string>
+    <string name="panel_level">水準器</string>
+    <string name="format_jpg">JPG</string>
+    <string name="format_raw_jpg">RAW + JPG</string>
+    <string name="flash_on">オン</string>
+    <string name="flash_torch">ライト</string>
+    <string name="focus_mf">MF</string>
+    <string name="mode_simple">シンプル</string>
+    <string name="mode_pro">プロ</string>
+
     <!-- Settings -->
     <string name="settings_title">設定</string>
     <string name="settings_language">言語</string>
