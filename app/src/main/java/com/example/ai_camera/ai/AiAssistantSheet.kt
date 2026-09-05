@@ -55,6 +55,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.ai_camera.R
 import com.example.ai_camera.camera.CameraSpecs
+import com.example.ai_camera.emotion.EmotionAvatar
+import com.example.ai_camera.emotion.EmotionClassifier
+import com.example.ai_camera.emotion.KeywordEmotionClassifier
 import com.example.ai_camera.camera.CaptureSettings
 import kotlinx.coroutines.launch
 
@@ -83,6 +86,8 @@ fun AiAssistantSheet(
     val listState = rememberLazyListState()
     val missingKeyMessage = stringResource(R.string.ai_no_key)
     val revertedMessage = stringResource(R.string.ai_reverted)
+    // Swapped for the TFLite-converted BERT model once that lands.
+    val emotionClassifier: EmotionClassifier = remember { KeywordEmotionClassifier() }
 
     fun send() {
         val prompt = input.trim()
@@ -131,12 +136,10 @@ fun AiAssistantSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_assistant_avatar),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape),
+                    // Reacts to the latest reply, chunk by chunk; idles when nothing is said.
+                    EmotionAvatar(
+                        reply = messages.lastOrNull { !it.fromUser }?.text,
+                        classifier = emotionClassifier,
                     )
                     Spacer(Modifier.width(10.dp))
                     Text(
